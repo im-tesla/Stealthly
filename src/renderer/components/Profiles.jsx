@@ -9,6 +9,9 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [clearDataDialogOpen, setClearDataDialogOpen] = useState(false);
+  const [clearDataConfirmation, setClearDataConfirmation] = useState('');
+  const [profileToClear, setProfileToClear] = useState(null);
   const [profileToDelete, setProfileToDelete] = useState(null);
   const [editingProfile, setEditingProfile] = useState(null);
   const [newProfile, setNewProfile] = useState({
@@ -82,6 +85,22 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const confirmDelete = (profile) => {
     setProfileToDelete(profile);
     setDeleteDialogOpen(true);
+  };
+
+  const confirmClearData = (profile) => {
+    setProfileToClear(profile);
+    setClearDataConfirmation('');
+    setClearDataDialogOpen(true);
+  };
+
+  const handleClearData = async () => {
+    if (clearDataConfirmation.toLowerCase() === 'clear' && profileToClear) {
+      await window.api.profiles.clearCookies(profileToClear.id);
+      console.log(`Cleared data for profile: ${profileToClear.name}`);
+      setClearDataDialogOpen(false);
+      setProfileToClear(null);
+      setClearDataConfirmation('');
+    }
   };
 
   const getProxyName = (proxyId) => {
@@ -448,12 +467,9 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                   </div>
                 </div>
 
-                {/* Clear Cookies Button */}
+                {/* Clear Data Button */}
                 <button
-                  onClick={() => {
-                    // Clear cookies logic here
-                    console.log(`Clearing cookies for profile: ${editingProfile.name}`);
-                  }}
+                  onClick={() => confirmClearData(editingProfile)}
                   className={`w-full border rounded-lg p-4 flex items-center space-x-3 transition-all ${
                     darkMode 
                       ? 'bg-zinc-950 border-zinc-800 hover:border-red-500 hover:bg-red-950/20' 
@@ -463,7 +479,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                   <Cookie className={`${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`} size={20} />
                   <div className="flex-1 text-left">
                     <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-black'}`}>Clear Data</div>
-                    <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Remove all stored cookies/data (0) for this profile</div>
+                    <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Remove all cookies, cache, and storage for this profile</div>
                   </div>
                   <Trash2 className="text-red-500" size={16} />
                 </button>
@@ -517,6 +533,66 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                   Delete
                 </button>
               </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
+
+      {/* Clear Data Confirmation Dialog */}
+      <AlertDialog.Root open={clearDataDialogOpen} onOpenChange={setClearDataDialogOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <AlertDialog.Content className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border rounded-xl p-6 w-[450px] shadow-2xl ${
+            darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
+          }`}>
+            <AlertDialog.Title className={`text-xl font-semibold mb-2 tracking-tight ${darkMode ? 'text-white' : 'text-black'}`}>
+              Clear Profile Data
+            </AlertDialog.Title>
+            <AlertDialog.Description className={`text-sm font-medium mb-4 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              This will permanently delete all cookies, cache, and storage data for "{profileToClear?.name}". This action cannot be undone.
+            </AlertDialog.Description>
+            
+            <div className="mb-6">
+              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                Type <span className="font-bold text-red-500">clear</span> to confirm:
+              </label>
+              <input
+                type="text"
+                value={clearDataConfirmation}
+                onChange={(e) => setClearDataConfirmation(e.target.value)}
+                placeholder="Type 'clear' here"
+                className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none transition-colors ${
+                  darkMode 
+                    ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                    : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                }`}
+              />
+            </div>
+
+            <div className="flex space-x-3 justify-end">
+              <AlertDialog.Cancel asChild>
+                <button 
+                  onClick={() => {
+                    setClearDataDialogOpen(false);
+                    setClearDataConfirmation('');
+                    setProfileToClear(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    darkMode 
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                      : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                  }`}
+                >
+                  Cancel
+                </button>
+              </AlertDialog.Cancel>
+              <button 
+                onClick={handleClearData}
+                disabled={clearDataConfirmation.toLowerCase() !== 'clear'}
+                className="px-4 py-2 rounded-lg font-medium transition-all bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Clear Data
+              </button>
             </div>
           </AlertDialog.Content>
         </AlertDialog.Portal>
