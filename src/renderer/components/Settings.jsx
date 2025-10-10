@@ -1,0 +1,122 @@
+import React, { useState } from 'react';
+import * as Switch from '@radix-ui/react-switch';
+import { Shield, Lock, Eye, Database, Bell, Palette } from 'lucide-react';
+
+const Settings = ({ darkMode, setDarkMode }) => {
+  const [settings, setSettings] = useState({
+    autoLaunch: false,
+    notifications: true,
+    hardwareAcceleration: true,
+    clearCookies: false,
+    fingerprinting: true,
+    webRTC: false,
+    autoUpdate: true,
+  });
+
+  const toggleSetting = (key) => {
+    setSettings({ ...settings, [key]: !settings[key] });
+  };
+
+  const settingGroups = [
+    {
+      title: 'Privacy & Security',
+      icon: Shield,
+      settings: [
+        { key: 'fingerprinting', label: 'Anti-Fingerprinting', description: 'Protect against browser fingerprinting' },
+        { key: 'webRTC', label: 'WebRTC Protection', description: 'Prevent WebRTC IP leaks' },
+        { key: 'clearCookies', label: 'Clear Cookies on Exit', description: 'Automatically clear cookies when closing' },
+      ],
+    },
+    {
+      title: 'Application',
+      icon: Database,
+      settings: [
+        { key: 'autoLaunch', label: 'Launch on Startup', description: 'Start Stealthy when system boots' },
+        { key: 'notifications', label: 'Notifications', description: 'Show desktop notifications' },
+        { key: 'autoUpdate', label: 'Auto Updates', description: 'Automatically update Stealthy' },
+      ],
+    },
+    {
+      title: 'Appearance',
+      icon: Palette,
+      settings: [
+        { key: 'darkMode', label: 'Dark Mode', description: 'Use dark theme (recommended)' },
+      ],
+    },
+  ];
+
+  return (
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-light mb-2">Settings</h1>
+        <p className={`${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Configure your Stealthy application</p>
+      </div>
+
+      <div className="space-y-8">
+        {settingGroups.map((group) => (
+          <div key={group.title} className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
+            <div className="flex items-center space-x-3 mb-6">
+              <group.icon className={`${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`} size={20} />
+              <h2 className="text-xl font-light">{group.title}</h2>
+            </div>
+            <div className="space-y-4">
+              {group.settings.map((setting) => (
+                <div
+                  key={setting.key}
+                  className={`flex items-center justify-between py-4 border-b last:border-0 ${darkMode ? 'border-zinc-800' : 'border-zinc-200'}`}
+                >
+                  <div className="flex-1">
+                    <div className="text-sm mb-1">{setting.label}</div>
+                    <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{setting.description}</div>
+                  </div>
+                  <Switch.Root
+                    checked={setting.key === 'darkMode' ? darkMode : settings[setting.key]}
+                    onCheckedChange={() => setting.key === 'darkMode' ? setDarkMode(!darkMode) : toggleSetting(setting.key)}
+                    className={`w-11 h-6 rounded-full relative transition-colors ${
+                      darkMode 
+                        ? 'bg-zinc-800 data-[state=checked]:bg-white' 
+                        : 'bg-zinc-300 data-[state=checked]:bg-black'
+                    }`}
+                  >
+                    <Switch.Thumb className={`block w-5 h-5 rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-5 ${
+                      darkMode 
+                        ? 'bg-zinc-400 data-[state=checked]:bg-black' 
+                        : 'bg-white data-[state=checked]:bg-white'
+                    }`} />
+                  </Switch.Root>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        <div className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
+          <h2 className="text-xl font-light mb-4">About</h2>
+          <div className="space-y-2 text-sm">
+            <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              <span>Version:</span>
+              <span className={darkMode ? 'text-white' : 'text-black'}>0.1.0001</span>
+            </div>
+            <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              <span>Build:</span>
+              <span className={darkMode ? 'text-white' : 'text-black'}>Development</span>
+            </div>
+            <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              <span>License:</span>
+              <span className={darkMode ? 'text-white' : 'text-black'}>MIT</span>
+            </div>
+          </div>
+          <button className={`w-full mt-4 py-2 rounded-lg transition-all ${
+            darkMode 
+              ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+              : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+          }`}>
+            Check for Updates
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Settings;
