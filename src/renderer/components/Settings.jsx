@@ -1,39 +1,52 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as Switch from '@radix-ui/react-switch';
-import { Shield, Lock, Eye, Database, Bell, Palette } from 'lucide-react';
+import { Database, Bell, Palette } from 'lucide-react';
 
 const Settings = ({ darkMode, setDarkMode }) => {
   const [settings, setSettings] = useState({
     autoLaunch: false,
     notifications: true,
-    hardwareAcceleration: true,
-    clearCookies: false,
-    fingerprinting: true,
-    webRTC: false,
     autoUpdate: true,
   });
+  const [loading, setLoading] = useState(true);
 
-  const toggleSetting = (key) => {
-    setSettings({ ...settings, [key]: !settings[key] });
+  useEffect(() => {
+    loadSettings();
+  }, []);
+
+  const loadSettings = async () => {
+    try {
+      const savedSettings = await window.api.settings.get();
+      if (savedSettings) {
+        setSettings(savedSettings);
+      }
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSetting = async (key) => {
+    const newSettings = { ...settings, [key]: !settings[key] };
+    setSettings(newSettings);
+    
+    try {
+      await window.api.settings.update(newSettings);
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      // Revert on error
+      setSettings(settings);
+    }
   };
 
   const settingGroups = [
-    {
-      title: 'Privacy & Security',
-      icon: Shield,
-      settings: [
-        { key: 'fingerprinting', label: 'Anti-Fingerprinting', description: 'Protect against browser fingerprinting' },
-        { key: 'webRTC', label: 'WebRTC Protection', description: 'Prevent WebRTC IP leaks' },
-        { key: 'clearCookies', label: 'Clear Cookies on Exit', description: 'Automatically clear cookies when closing' },
-      ],
-    },
     {
       title: 'Application',
       icon: Database,
       settings: [
         { key: 'autoLaunch', label: 'Launch on Startup', description: 'Start Stealthy when system boots' },
         { key: 'notifications', label: 'Notifications', description: 'Show desktop notifications' },
-        { key: 'autoUpdate', label: 'Auto Updates', description: 'Automatically update Stealthy' },
       ],
     },
     {
@@ -44,6 +57,14 @@ const Settings = ({ darkMode, setDarkMode }) => {
       ],
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Loading settings...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -106,13 +127,6 @@ const Settings = ({ darkMode, setDarkMode }) => {
               <span className={darkMode ? 'text-white' : 'text-black'}>MIT</span>
             </div>
           </div>
-          <button className={`w-full mt-4 py-2 rounded-lg transition-all ${
-            darkMode 
-              ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
-              : 'bg-zinc-200 hover:bg-zinc-300 text-black'
-          }`}>
-            Check for Updates
-          </button>
         </div>
       </div>
     </div>

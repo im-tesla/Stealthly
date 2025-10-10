@@ -4,12 +4,7 @@ import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
 import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie } from 'lucide-react';
 
-const Profiles = ({ proxies, darkMode }) => {
-  const [profiles, setProfiles] = useState([
-    { id: 1, name: 'Profile 1', status: 'active', proxy: 'US Proxy 1', proxyId: 1, created: '2 days ago', untraceable: true },
-    { id: 2, name: 'Profile 2', status: 'inactive', proxy: 'UK Proxy 1', proxyId: 2, created: '5 days ago', untraceable: true },
-    { id: 3, name: 'Profile 3', status: 'active', proxy: 'DE Proxy 1', proxyId: 3, created: '1 week ago', untraceable: false },
-  ]);
+const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingProfile, setEditingProfile] = useState(null);
@@ -19,25 +14,25 @@ const Profiles = ({ proxies, darkMode }) => {
     proxyId: null,
   });
 
-  const handleCreateProfile = () => {
+  const handleCreateProfile = async () => {
     if (newProfile.name.trim()) {
-      const selectedProxy = proxies.find(p => p.id === newProfile.proxyId);
-      const profile = {
-        id: profiles.length + 1,
+      const profileData = {
         name: newProfile.name,
-        status: 'inactive',
-        proxy: selectedProxy ? selectedProxy.name : 'No Proxy',
-        proxyId: newProfile.proxyId,
-        created: 'Just now',
         untraceable: newProfile.untraceable,
+        proxyId: newProfile.proxyId,
+        status: 'inactive',
       };
-      setProfiles([...profiles, profile]);
-      setNewProfile({
-        name: '',
-        untraceable: true,
-        proxyId: null,
-      });
-      setIsDialogOpen(false);
+      
+      const createdProfile = await window.api.profiles.create(profileData);
+      if (createdProfile) {
+        setProfiles([...profiles, createdProfile]);
+        setNewProfile({
+          name: '',
+          untraceable: true,
+          proxyId: null,
+        });
+        setIsDialogOpen(false);
+      }
     }
   };
 
@@ -49,35 +44,55 @@ const Profiles = ({ proxies, darkMode }) => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateProfile = () => {
+  const handleUpdateProfile = async () => {
     if (editingProfile && editingProfile.name.trim()) {
-      const selectedProxy = proxies.find(p => p.id === editingProfile.proxyId);
-      const updatedProfiles = profiles.map(p => 
-        p.id === editingProfile.id 
-          ? {
-              ...p,
-              name: editingProfile.name,
-              proxyId: editingProfile.proxyId,
-              proxy: selectedProxy ? selectedProxy.name : 'No Proxy',
-              untraceable: editingProfile.untraceable,
-            }
-          : p
-      );
-      setProfiles(updatedProfiles);
+      const updates = {
+        name: editingProfile.name,
+        proxyId: editingProfile.proxyId,
+        untraceable: editingProfile.untraceable,
+      };
       
-      // Handle clear cookies if selected
-      if (editingProfile.clearCookies) {
-        console.log(`Clearing cookies for profile: ${editingProfile.name}`);
-        // Add actual cookie clearing logic here
+      const updatedProfile = await window.api.profiles.update(editingProfile.id, updates);
+      if (updatedProfile) {
+        setProfiles(profiles.map(p => p.id === editingProfile.id ? updatedProfile : p));
+        
+        // Handle clear cookies if selected
+        if (editingProfile.clearCookies) {
+          await window.api.profiles.clearCookies(editingProfile.id);
+        }
+        
+        setIsEditDialogOpen(false);
+        setEditingProfile(null);
       }
-      
-      setIsEditDialogOpen(false);
-      setEditingProfile(null);
     }
   };
 
-  const handleDeleteProfile = (profileId) => {
-    setProfiles(profiles.filter(p => p.id !== profileId));
+  const handleDeleteProfile = async (profileId) => {
+    const result = await window.api.profiles.delete(profileId);
+    if (result.success) {
+      setProfiles(profiles.filter(p => p.id !== profileId));
+    }
+  };
+
+  const getProxyName = (proxyId) => {
+    if (!proxyId) return 'No Proxy';
+    const proxy = proxies.find(p => p.id === proxyId);
+    return proxy ? proxy.name : 'Unknown Proxy';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Unknown';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInMs = now - date;
+    const diffInDays = Math.floor(diffInMs / (1000 * 60 * 60 * 24));
+    
+    if (diffInDays === 0) return 'Today';
+    if (diffInDays === 1) return '1 day ago';
+    if (diffInDays < 7) return `${diffInDays} days ago`;
+    if (diffInDays < 14) return '1 week ago';
+    if (diffInDays < 30) return `${Math.floor(diffInDays / 7)} weeks ago`;
+    return date.toLocaleDateString();
   };
 
   return (
@@ -91,8 +106,8 @@ const Profiles = ({ proxies, darkMode }) => {
           <Dialog.Trigger asChild>
             <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
               darkMode 
-                ? 'bg-white text-black hover:bg-zinc-200' 
-                : 'bg-black text-white hover:bg-zinc-800'
+                ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}>
               <Plus size={18} />
               <span>New Profile</span>
@@ -221,8 +236,8 @@ const Profiles = ({ proxies, darkMode }) => {
                   disabled={!newProfile.name.trim()}
                   className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     darkMode 
-                      ? 'bg-white text-black hover:bg-zinc-200' 
-                      : 'bg-black text-white hover:bg-zinc-800'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
                   Create Profile
@@ -264,11 +279,11 @@ const Profiles = ({ proxies, darkMode }) => {
             <div className="space-y-2 mb-4 text-sm">
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Proxy:</span>
-                <span>{profile.proxy}</span>
+                <span>{getProxyName(profile.proxyId)}</span>
               </div>
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Created:</span>
-                <span>{profile.created}</span>
+                <span>{formatDate(profile.createdAt)}</span>
               </div>
             </div>
             <div className="flex space-x-2">
@@ -449,8 +464,8 @@ const Profiles = ({ proxies, darkMode }) => {
                   disabled={!editingProfile.name.trim()}
                   className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     darkMode 
-                      ? 'bg-white text-black hover:bg-zinc-200' 
-                      : 'bg-black text-white hover:bg-zinc-800'
+                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
                   Update Profile

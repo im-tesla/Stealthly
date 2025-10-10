@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { LayoutDashboard, User, Globe, Settings } from 'lucide-react';
 import Dashboard from './components/Dashboard';
@@ -9,11 +9,62 @@ import SettingsPage from './components/Settings';
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [darkMode, setDarkMode] = useState(true);
-  const [proxies, setProxies] = useState([
-    { id: 1, name: 'US Proxy 1', host: '123.45.67.89', port: '8080', type: 'HTTP', status: 'active' },
-    { id: 2, name: 'UK Proxy 1', host: '98.76.54.32', port: '8080', type: 'HTTPS', status: 'active' },
-    { id: 3, name: 'DE Proxy 1', host: '11.22.33.44', port: '3128', type: 'SOCKS5', status: 'inactive' },
-  ]);
+  const [proxies, setProxies] = useState([]);
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load data from backend on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [proxiesData, profilesData, settingsData] = await Promise.all([
+        window.api.proxies.getAll(),
+        window.api.profiles.getAll(),
+        window.api.settings.get()
+      ]);
+      setProxies(proxiesData || []);
+      setProfiles(profilesData || []);
+      
+      // Load dark mode from settings
+      if (settingsData && typeof settingsData.darkMode === 'boolean') {
+        setDarkMode(settingsData.darkMode);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reloadProfiles = async () => {
+    try {
+      const profilesData = await window.api.profiles.getAll();
+      setProfiles(profilesData || []);
+    } catch (error) {
+      console.error('Error reloading profiles:', error);
+    }
+  };
+
+  const handleDarkModeToggle = async (newDarkMode) => {
+    setDarkMode(newDarkMode);
+    
+    try {
+      // Load current settings
+      const currentSettings = await window.api.settings.get();
+      // Update with new dark mode value
+      await window.api.settings.update({
+        ...currentSettings,
+        darkMode: newDarkMode
+      });
+    } catch (error) {
+      console.error('Error saving dark mode:', error);
+      // Revert on error
+      setDarkMode(!newDarkMode);
+    }
+  };
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, component: Dashboard },
@@ -22,12 +73,23 @@ const App = () => {
     { id: 'settings', label: 'Settings', icon: Settings, component: SettingsPage },
   ];
 
+  if (loading) {
+    return (
+      <div className={`h-screen w-screen flex items-center justify-center ${darkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
+        <div className="text-center">
+          <div className="text-4xl mb-4" style={{ fontFamily: "'Leckerli One', cursive" }}>S</div>
+          <div className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`h-screen w-screen flex overflow-hidden ${darkMode ? 'bg-black text-white' : 'bg-white text-black'}`}>
       <Tabs.Root value={activeTab} onValueChange={setActiveTab} className="flex w-full">
         {/* Sidebar */}
         <Tabs.List className={`w-20 border-r flex flex-col items-center py-6 space-y-2 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-100 border-zinc-300'}`}>
-          <div className={`mb-8 text-2xl font-bold ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>S</div>
+          <div className={`mb-2 text-2xl font-normal ${darkMode ? 'text-white' : 'text-black'}`} style={{ fontFamily: "'Leckerli One', cursive" }}>S</div>
           {tabs.map((tab) => (
             <Tabs.Trigger
               key={tab.id}
@@ -48,13 +110,23 @@ const App = () => {
           {tabs.map((tab) => (
             <Tabs.Content key={tab.id} value={tab.id} className="flex-1 overflow-auto">
               {tab.id === 'profiles' ? (
-                <Profiles proxies={proxies} darkMode={darkMode} />
+                <Profiles 
+                  profiles={profiles} 
+                  setProfiles={setProfiles}
+                  proxies={proxies} 
+                  darkMode={darkMode} 
+                />
               ) : tab.id === 'proxies' ? (
-                <Proxies proxies={proxies} setProxies={setProxies} darkMode={darkMode} />
+                <Proxies 
+                  proxies={proxies} 
+                  setProxies={setProxies}
+                  reloadProfiles={reloadProfiles}
+                  darkMode={darkMode} 
+                />
               ) : tab.id === 'settings' ? (
-                <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />
+                <SettingsPage darkMode={darkMode} setDarkMode={handleDarkModeToggle} />
               ) : (
-                <tab.component darkMode={darkMode} />
+                <tab.component profiles={profiles} proxies={proxies} darkMode={darkMode} />
               )}
             </Tabs.Content>
           ))}

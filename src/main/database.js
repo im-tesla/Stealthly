@@ -1,0 +1,239 @@
+const fs = require('fs');
+const path = require('path');
+const { app } = require('electron');
+const crypto = require('crypto');
+
+// Database file paths
+const userDataPath = app.getPath('userData');
+const profilesDbPath = path.join(userDataPath, 'profiles.json');
+const proxiesDbPath = path.join(userDataPath, 'proxies.json');
+const settingsDbPath = path.join(userDataPath, 'settings.json');
+
+// Encryption key (in production, this should be more secure)
+const ENCRYPTION_KEY = crypto.scryptSync('stealthy-secret-key', 'salt', 32);
+const IV_LENGTH = 16;
+
+// Encrypt data
+function encrypt(text) {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+  let encrypted = cipher.update(text, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  return iv.toString('hex') + ':' + encrypted;
+}
+
+// Decrypt data
+function decrypt(text) {
+  try {
+    const parts = text.split(':');
+    const iv = Buffer.from(parts[0], 'hex');
+    const encryptedText = parts[1];
+    const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
+  } catch (error) {
+    console.error('Decryption error:', error);
+    return null;
+  }
+}
+
+// Initialize database files if they don't exist
+function initDatabase() {
+  if (!fs.existsSync(profilesDbPath)) {
+    fs.writeFileSync(profilesDbPath, JSON.stringify([], null, 2));
+  }
+  if (!fs.existsSync(proxiesDbPath)) {
+    fs.writeFileSync(proxiesDbPath, JSON.stringify([], null, 2));
+  }
+  if (!fs.existsSync(settingsDbPath)) {
+    const defaultSettings = {
+      darkMode: true,
+      autoLaunch: false,
+      notifications: true,
+      autoUpdate: true,
+    };
+    const encryptedSettings = encrypt(JSON.stringify(defaultSettings));
+    fs.writeFileSync(settingsDbPath, JSON.stringify({ data: encryptedSettings }, null, 2));
+  }
+}
+
+// Read data from JSON file
+function readData(filePath) {
+  try {
+    const data = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error(`Error reading ${filePath}:`, error);
+    return [];
+  }
+}
+
+// Write data to JSON file
+function writeData(filePath, data) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    return { success: true };
+  } catch (error) {
+    console.error(`Error writing to ${filePath}:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+// ========== PROFILES ==========
+
+function getAllProfiles() {
+  return readData(profilesDbPath);
+}
+
+function getProfile(id) {
+  const profiles = readData(profilesDbPath);
+  return profiles.find(p => p.id === id);
+}
+
+function createProfile(profileData) {
+  const profiles = readData(profilesDbPath);
+  const newProfile = {
+    id: Date.now(),
+    name: profileData.name,
+    untraceable: profileData.untraceable || false,
+    proxyId: profileData.proxyId || null,
+    status: 'idle',
+    createdAt: new Date().toISOString(),
+    lastUsed: null,
+    ...profileData
+  };
+  profiles.push(newProfile);
+  const result = writeData(profilesDbPath, profiles);
+  return result.success ? newProfile : null;
+}
+
+function updateProfile(id, updates) {
+  const profiles = readData(profilesDbPath);
+  const index = profiles.findIndex(p => p.id === id);
+  if (index === -1) return null;
+  
+  profiles[index] = { ...profiles[index], ...updates, id };
+  const result = writeData(profilesDbPath, profiles);
+  return result.success ? profiles[index] : null;
+}
+
+function deleteProfile(id) {
+  const profiles = readData(profilesDbPath);
+  const filtered = profiles.filter(p => p.id !== id);
+  if (filtered.length === profiles.length) return { success: false, error: 'Profile not found' };
+  
+  return writeData(profilesDbPath, filtered);
+}
+
+function clearProfileCookies(id) {
+  // TODO: Implement actual cookie clearing logic
+  console.log(`Clearing cookies for profile ${id}`);
+  return { success: true, message: 'Cookies cleared' };
+}
+
+// ========== PROXIES ==========
+
+function getAllProxies() {
+  return readData(proxiesDbPath);
+}
+
+function getProxy(id) {
+  const proxies = readData(proxiesDbPath);
+  return proxies.find(p => p.id === id);
+}
+
+function createProxy(proxyData) {
+  const proxies = readData(proxiesDbPath);
+  const newProxy = {
+    id: Date.now(),
+    name: proxyData.name,
+    host: proxyData.host,
+    port: proxyData.port,
+    type: proxyData.type || 'HTTP',
+    username: proxyData.username || '',
+    password: proxyData.password || '',
+    status: 'inactive',
+    createdAt: new Date().toISOString(),
+    ...proxyData
+  };
+  proxies.push(newProxy);
+  const result = writeData(proxiesDbPath, proxies);
+  return result.success ? newProxy : null;
+}
+
+function updateProxy(id, updates) {
+  const proxies = readData(proxiesDbPath);
+  const index = proxies.findIndex(p => p.id === id);
+  if (index === -1) return null;
+  
+  proxies[index] = { ...proxies[index], ...updates, id };
+  const result = writeData(proxiesDbPath, proxies);
+  return result.success ? proxies[index] : null;
+}
+
+function deleteProxy(id) {
+  const proxies = readData(proxiesDbPath);
+  const filtered = proxies.filter(p => p.id !== id);
+  if (filtered.length === proxies.length) return { success: false, error: 'Proxy not found' };
+  
+  // Update all profiles using this proxy to have no proxy
+  const profiles = readData(profilesDbPath);
+  const updatedProfiles = profiles.map(profile => {
+    if (profile.proxyId === id) {
+      return { ...profile, proxyId: null };
+    }
+    return profile;
+  });
+  
+  // Save updated profiles
+  writeData(profilesDbPath, updatedProfiles);
+  
+  // Save updated proxies
+  return writeData(proxiesDbPath, filtered);
+}
+
+// ========== SETTINGS ==========
+
+function getSettings() {
+  try {
+    const data = fs.readFileSync(settingsDbPath, 'utf8');
+    const { data: encryptedData } = JSON.parse(data);
+    const decryptedData = decrypt(encryptedData);
+    return decryptedData ? JSON.parse(decryptedData) : null;
+  } catch (error) {
+    console.error('Error reading settings:', error);
+    return null;
+  }
+}
+
+function updateSettings(newSettings) {
+  try {
+    const encryptedSettings = encrypt(JSON.stringify(newSettings));
+    fs.writeFileSync(settingsDbPath, JSON.stringify({ data: encryptedSettings }, null, 2));
+    return { success: true, settings: newSettings };
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+module.exports = {
+  initDatabase,
+  // Profiles
+  getAllProfiles,
+  getProfile,
+  createProfile,
+  updateProfile,
+  deleteProfile,
+  clearProfileCookies,
+  // Proxies
+  getAllProxies,
+  getProxy,
+  createProxy,
+  updateProxy,
+  deleteProxy,
+  // Settings
+  getSettings,
+  updateSettings,
+};

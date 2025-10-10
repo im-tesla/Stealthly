@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const { registerIpcHandlers } = require('./ipcHandlers');
+const { initDatabase } = require('./database');
 
 if (!app.isPackaged) {
   try {
@@ -35,6 +36,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  initDatabase();
   registerIpcHandlers(ipcMain);
   createWindow();
 });

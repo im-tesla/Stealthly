@@ -3,25 +3,39 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle } from 'lucide-react';
 
-const Proxies = ({ proxies, setProxies, darkMode }) => {
+const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [newProxy, setNewProxy] = useState({ name: '', address: '', type: 'SOCKS5' });
 
-  const handleCreateProxy = () => {
+  const handleCreateProxy = async () => {
     if (newProxy.name && newProxy.address) {
       const [host, port] = newProxy.address.split(':');
       if (host && port) {
-        const proxy = {
-          id: proxies.length + 1,
+        const proxyData = {
           name: newProxy.name,
           host: host.trim(),
           port: port.trim(),
           type: newProxy.type,
           status: 'active',
         };
-        setProxies([...proxies, proxy]);
-        setNewProxy({ name: '', address: '', type: 'SOCKS5' });
-        setIsDialogOpen(false);
+        
+        const createdProxy = await window.api.proxies.create(proxyData);
+        if (createdProxy) {
+          setProxies([...proxies, createdProxy]);
+          setNewProxy({ name: '', address: '', type: 'SOCKS5' });
+          setIsDialogOpen(false);
+        }
+      }
+    }
+  };
+
+  const handleDeleteProxy = async (id) => {
+    const result = await window.api.proxies.delete(id);
+    if (result.success) {
+      setProxies(proxies.filter(p => p.id !== id));
+      // Reload profiles to update any that were using this proxy
+      if (reloadProfiles) {
+        await reloadProfiles();
       }
     }
   };
@@ -37,8 +51,8 @@ const Proxies = ({ proxies, setProxies, darkMode }) => {
           <Dialog.Trigger asChild>
             <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
               darkMode 
-                ? 'bg-white text-black hover:bg-zinc-200' 
-                : 'bg-black text-white hover:bg-zinc-800'
+                ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
             }`}>
               <Plus size={18} />
               <span>Add Proxy</span>
@@ -139,8 +153,8 @@ const Proxies = ({ proxies, setProxies, darkMode }) => {
                   disabled={!newProxy.name || !newProxy.address}
                   className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     darkMode 
-                      ? 'bg-white text-black hover:bg-zinc-200' 
-                      : 'bg-black text-white hover:bg-zinc-800'
+                      ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
                   }`}
                 >
                   Add Proxy
@@ -188,11 +202,13 @@ const Proxies = ({ proxies, setProxies, darkMode }) => {
                 }`}>
                   <Edit size={18} />
                 </button>
-                <button className={`p-2 rounded-lg transition-all ${
-                  darkMode 
-                    ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' 
-                    : 'text-zinc-500 hover:text-red-600 hover:bg-red-50'
-                }`}>
+                <button 
+                  onClick={() => handleDeleteProxy(proxy.id)}
+                  className={`p-2 rounded-lg transition-all ${
+                    darkMode 
+                      ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' 
+                      : 'text-zinc-500 hover:text-red-600 hover:bg-red-50'
+                  }`}>
                   <Trash2 size={18} />
                 </button>
               </div>

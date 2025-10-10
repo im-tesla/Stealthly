@@ -1,12 +1,19 @@
 import React from 'react';
 import { Activity, Users, Globe, Shield } from 'lucide-react';
 
-const Dashboard = ({ darkMode }) => {
+const Dashboard = ({ profiles, proxies, darkMode }) => {
+  const activeProfiles = profiles.filter(p => p.status === 'active').length;
+  const totalProxies = proxies.length;
+  const untraceableProfiles = profiles.filter(p => p.untraceable).length;
+  const protectionRate = profiles.length > 0 
+    ? Math.round((untraceableProfiles / profiles.length) * 100) 
+    : 100;
+
   const stats = [
-    { label: 'Active Profiles', value: '12', icon: Users, color: 'text-blue-400' },
-    { label: 'Proxies', value: '8', icon: Globe, color: 'text-green-400' },
-    { label: 'Sessions', value: '24', icon: Activity, color: 'text-purple-400' },
-    { label: 'Protected', value: '100%', icon: Shield, color: 'text-emerald-400' },
+    { label: 'Active Profiles', value: activeProfiles.toString(), icon: Users, color: 'text-blue-400' },
+    { label: 'Proxies', value: totalProxies.toString(), icon: Globe, color: 'text-green-400' },
+    { label: 'Total Profiles', value: profiles.length.toString(), icon: Activity, color: 'text-purple-400' },
+    { label: 'Protected', value: `${protectionRate}%`, icon: Shield, color: 'text-emerald-400' },
   ];
 
   return (
