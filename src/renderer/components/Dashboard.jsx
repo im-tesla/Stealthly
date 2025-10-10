@@ -60,8 +60,8 @@ const Dashboard = ({ profiles, proxies, darkMode }) => {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-light mb-2">Dashboard</h1>
-        <p className={darkMode ? 'text-zinc-500' : 'text-zinc-600'}>Overview of your undetectable sessions</p>
+        <h1 className="text-3xl font-semibold mb-2 tracking-tight">Dashboard</h1>
+        <p className={`text-base ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Overview of your undetectable sessions</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -77,17 +77,17 @@ const Dashboard = ({ profiles, proxies, darkMode }) => {
             <div className="flex items-center justify-between mb-4">
               <stat.icon className={`${stat.color}`} size={24} />
             </div>
-            <div className="text-3xl font-light mb-1">{stat.value}</div>
-            <div className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{stat.label}</div>
+            <div className="text-3xl font-semibold mb-1 tracking-tight">{stat.value}</div>
+            <div className={`text-sm font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>{stat.label}</div>
           </div>
         ))}
       </div>
 
       <div className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
-        <h2 className="text-xl font-light mb-4">Recent Activity</h2>
+        <h2 className="text-xl font-semibold mb-4 tracking-tight">Recent Activity</h2>
         <div className="space-y-4">
           {activities.length === 0 ? (
-            <div className={`text-center py-8 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <div className={`text-center py-8 font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               No activity yet. Create a profile to get started!
             </div>
           ) : (
@@ -101,8 +101,8 @@ const Dashboard = ({ profiles, proxies, darkMode }) => {
                 <div className="flex items-center space-x-4">
                   <div className={`w-2 h-2 rounded-full ${getActivityIcon(activity.type)}`}></div>
                   <div>
-                    <div className="text-sm">{activity.details}</div>
-                    <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                    <div className="text-sm font-medium">{activity.details}</div>
+                    <div className={`text-xs font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                       {formatTimestamp(activity.timestamp)}
                     </div>
                   </div>

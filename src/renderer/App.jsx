@@ -8,7 +8,7 @@ import SettingsPage from './components/Settings';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
   const [proxies, setProxies] = useState([]);
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);

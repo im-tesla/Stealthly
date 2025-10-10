@@ -140,8 +140,8 @@ const Settings = ({ darkMode, setDarkMode }) => {
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-light mb-2">Settings</h1>
-        <p className={`${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Configure your Stealthy application</p>
+        <h1 className="text-3xl font-semibold mb-2 tracking-tight">Settings</h1>
+        <p className={`text-base font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Configure your Stealthy application</p>
       </div>
 
       <div className="space-y-8">
@@ -149,7 +149,7 @@ const Settings = ({ darkMode, setDarkMode }) => {
           <div key={group.title} className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
             <div className="flex items-center space-x-3 mb-6">
               <group.icon className={`${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`} size={20} />
-              <h2 className="text-xl font-light">{group.title}</h2>
+              <h2 className="text-xl font-semibold tracking-tight">{group.title}</h2>
             </div>
             <div className="space-y-4">
               {group.settings.map((setting) => (
@@ -158,8 +158,8 @@ const Settings = ({ darkMode, setDarkMode }) => {
                   className={`flex items-center justify-between py-4 border-b last:border-0 ${darkMode ? 'border-zinc-800' : 'border-zinc-200'}`}
                 >
                   <div className="flex-1">
-                    <div className="text-sm mb-1">{setting.label}</div>
-                    <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{setting.description}</div>
+                    <div className="text-sm font-semibold mb-1">{setting.label}</div>
+                    <div className={`text-xs font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>{setting.description}</div>
                   </div>
                   <Switch.Root
                     checked={setting.key === 'darkMode' ? darkMode : settings[setting.key]}
@@ -186,17 +186,17 @@ const Settings = ({ darkMode, setDarkMode }) => {
         <div className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
           <div className="flex items-center space-x-3 mb-6">
             <Database className={`${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`} size={20} />
-            <h2 className="text-xl font-light">Data Management</h2>
+            <h2 className="text-xl font-semibold tracking-tight">Data Management</h2>
           </div>
           <div className="space-y-4">
             <div>
-              <p className={`text-sm mb-4 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              <p className={`text-sm font-medium mb-4 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                 Export and import your profiles, proxies, and settings. All data is encrypted for security.
               </p>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleExport}
-                  className={`flex items-center justify-center space-x-2 py-3 rounded-lg transition-all ${
+                  className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-medium transition-all ${
                     darkMode 
                       ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
                       : 'bg-zinc-200 hover:bg-zinc-300 text-black'
@@ -207,7 +207,7 @@ const Settings = ({ darkMode, setDarkMode }) => {
                 </button>
                 <button
                   onClick={handleImport}
-                  className={`flex items-center justify-center space-x-2 py-3 rounded-lg transition-all ${
+                  className={`flex items-center justify-center space-x-2 py-3 rounded-lg font-medium transition-all ${
                     darkMode 
                       ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
                       : 'bg-zinc-200 hover:bg-zinc-300 text-black'
@@ -232,19 +232,19 @@ const Settings = ({ darkMode, setDarkMode }) => {
         </div>
 
         <div className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
-          <h2 className="text-xl font-light mb-4">About</h2>
-          <div className="space-y-2 text-sm">
-            <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+          <h2 className="text-xl font-semibold mb-4 tracking-tight">About</h2>
+          <div className="space-y-2 text-sm font-medium">
+            <div className={`flex justify-between ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               <span>Version:</span>
-              <span className={darkMode ? 'text-white' : 'text-black'}>0.1.0001</span>
+              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>0.1.0001</span>
             </div>
-            <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <div className={`flex justify-between ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               <span>Build:</span>
-              <span className={darkMode ? 'text-white' : 'text-black'}>Development</span>
+              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>Development</span>
             </div>
-            <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+            <div className={`flex justify-between ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               <span>License:</span>
-              <span className={darkMode ? 'text-white' : 'text-black'}>MIT</span>
+              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>MIT</span>
             </div>
           </div>
         </div>

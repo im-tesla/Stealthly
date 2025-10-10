@@ -8,7 +8,13 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [proxyToDelete, setProxyToDelete] = useState(null);
-  const [newProxy, setNewProxy] = useState({ name: '', address: '', type: 'SOCKS5' });
+  const [newProxy, setNewProxy] = useState({ 
+    name: '', 
+    address: '', 
+    type: 'SOCKS5',
+    username: '',
+    password: ''
+  });
 
   const handleCreateProxy = async () => {
     if (newProxy.name && newProxy.address) {
@@ -19,13 +25,15 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
           host: host.trim(),
           port: port.trim(),
           type: newProxy.type,
+          username: newProxy.username || null,
+          password: newProxy.password || null,
           status: 'active',
         };
         
         const createdProxy = await window.api.proxies.create(proxyData);
         if (createdProxy) {
           setProxies([...proxies, createdProxy]);
-          setNewProxy({ name: '', address: '', type: 'SOCKS5' });
+          setNewProxy({ name: '', address: '', type: 'SOCKS5', username: '', password: '' });
           setIsDialogOpen(false);
         }
       }
@@ -54,12 +62,12 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-light mb-2">Proxies</h1>
-          <p className={darkMode ? 'text-zinc-500' : 'text-zinc-600'}>Manage your proxy servers</p>
+          <h1 className="text-3xl font-semibold mb-2 tracking-tight">Proxies</h1>
+          <p className={`text-base font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Manage your proxy servers</p>
         </div>
         <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <Dialog.Trigger asChild>
-            <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
               darkMode 
                 ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
                 : 'bg-zinc-800 text-white hover:bg-zinc-700'
@@ -74,7 +82,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
               darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
             }`}>
               <div className="flex items-center justify-between mb-4">
-                <Dialog.Title className={`text-xl font-light ${darkMode ? 'text-white' : 'text-black'}`}>Add New Proxy</Dialog.Title>
+                <Dialog.Title className={`text-xl font-semibold tracking-tight ${darkMode ? 'text-white' : 'text-black'}`}>Add New Proxy</Dialog.Title>
                 <Dialog.Close asChild>
                   <button className={`transition-colors ${darkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-500 hover:text-black'}`}>
                     <X size={20} />
@@ -86,7 +94,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
               </Dialog.Description>
               <div className="space-y-5">
                 <div>
-                  <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Proxy Name *</label>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Proxy Name *</label>
                   <input
                     type="text"
                     value={newProxy.name}
@@ -101,7 +109,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                 </div>
                 
                 <div>
-                  <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>IP:Port *</label>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>IP:Port *</label>
                   <input
                     type="text"
                     value={newProxy.address}
@@ -116,7 +124,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                 </div>
 
                 <div>
-                  <label className={`block text-sm mb-3 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Proxy Type</label>
+                  <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Proxy Type</label>
                   <ToggleGroup.Root
                     type="single"
                     value={newProxy.type}
@@ -127,7 +135,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   >
                     <ToggleGroup.Item
                       value="SOCKS5"
-                      className={`flex-1 px-4 py-2 text-sm rounded-md transition-all ${
+                      className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                         darkMode 
                           ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
                           : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
@@ -137,7 +145,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                     </ToggleGroup.Item>
                     <ToggleGroup.Item
                       value="HTTPS"
-                      className={`flex-1 px-4 py-2 text-sm rounded-md transition-all ${
+                      className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                         darkMode 
                           ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
                           : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
@@ -156,6 +164,43 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                       HTTP
                     </ToggleGroup.Item>
                   </ToggleGroup.Root>
+                </div>
+
+                <div className={`border-t pt-4 ${darkMode ? 'border-zinc-800' : 'border-zinc-200'}`}>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                    Authentication (Optional)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <input
+                        type="text"
+                        value={newProxy.username}
+                        onChange={(e) => setNewProxy({ ...newProxy, username: e.target.value })}
+                        placeholder="Username"
+                        className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
+                          darkMode 
+                            ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                            : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                        }`}
+                      />
+                    </div>
+                    <div>
+                      <input
+                        type="password"
+                        value={newProxy.password}
+                        onChange={(e) => setNewProxy({ ...newProxy, password: e.target.value })}
+                        placeholder="Password"
+                        className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
+                          darkMode 
+                            ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                            : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                  <p className={`text-xs mt-2 ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                    Leave empty if your proxy doesn't require authentication
+                  </p>
                 </div>
 
                 <button
@@ -195,13 +240,33 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   )}
                   <div>
                     <h3 className="text-lg font-light">{proxy.name}</h3>
-                    <p className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{proxy.host}:{proxy.port}</p>
+                    <p className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                      {proxy.host}:{proxy.port}
+                      {proxy.username && (
+                        <span className={`ml-2 text-xs ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                          • Auth: {proxy.username}
+                        </span>
+                      )}
+                    </p>
                   </div>
                 </div>
-                <div className={`px-3 py-1 rounded-full text-xs ${
-                  darkMode ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-600'
-                }`}>
-                  {proxy.type}
+                <div className="flex items-center space-x-2">
+                  <div className={`px-3 py-1 rounded-full text-xs ${
+                    darkMode ? 'bg-zinc-800 text-zinc-400' : 'bg-zinc-200 text-zinc-600'
+                  }`}>
+                    {proxy.type}
+                  </div>
+                  {proxy.username && (
+                    <div className={`px-3 py-1 rounded-full text-xs flex items-center space-x-1 ${
+                      darkMode ? 'bg-blue-950 text-blue-400 border border-blue-900' : 'bg-blue-50 text-blue-600 border border-blue-200'
+                    }`}>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                      </svg>
+                      <span>Auth</span>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex items-center space-x-2">

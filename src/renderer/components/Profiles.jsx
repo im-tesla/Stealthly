@@ -109,12 +109,12 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-light mb-2">Profiles</h1>
-          <p className={darkMode ? 'text-zinc-500' : 'text-zinc-600'}>Manage your browser profiles</p>
+          <h1 className="text-3xl font-semibold mb-2 tracking-tight">Profiles</h1>
+          <p className={`text-base font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Manage your browser profiles</p>
         </div>
         <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <Dialog.Trigger asChild>
-            <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
+            <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
               darkMode 
                 ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
                 : 'bg-zinc-800 text-white hover:bg-zinc-700'
@@ -129,14 +129,14 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
               darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
             }`}>
               <div className="flex items-center justify-between mb-4">
-                <Dialog.Title className={`text-xl font-light ${darkMode ? 'text-white' : 'text-black'}`}>Create New Profile</Dialog.Title>
+                <Dialog.Title className={`text-xl font-semibold tracking-tight ${darkMode ? 'text-white' : 'text-black'}`}>Create New Profile</Dialog.Title>
                 <Dialog.Close asChild>
                   <button className={`transition-colors ${darkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-500 hover:text-black'}`}>
                     <X size={20} />
                   </button>
                 </Dialog.Close>
               </div>
-              <Dialog.Description className={`text-sm mb-6 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              <Dialog.Description className={`text-sm font-medium mb-6 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
                 Configure your undetectable profile
               </Dialog.Description>
               
@@ -147,8 +147,8 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                     <div className="flex items-center space-x-3">
                       <Shield className={`${newProfile.untraceable ? 'text-green-400' : (darkMode ? 'text-zinc-600' : 'text-zinc-400')}`} size={20} />
                       <div>
-                        <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-black'}`}>Untraceable Mode</div>
-                        <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Maximum privacy protection</div>
+                        <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>Untraceable Mode</div>
+                        <div className={`text-xs font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Maximum privacy protection</div>
                       </div>
                     </div>
                     <Switch.Root
@@ -163,7 +163,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
 
                 {/* Profile Name */}
                 <div>
-                  <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Profile Name *</label>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Profile Name *</label>
                   <input
                     type="text"
                     value={newProfile.name}
