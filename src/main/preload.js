@@ -23,4 +23,13 @@ contextBridge.exposeInMainWorld('api', {
     get: () => ipcRenderer.invoke('settings:get'),
     update: (settings) => ipcRenderer.invoke('settings:update', settings),
   },
+  // Import/Export API
+  data: {
+    export: () => ipcRenderer.invoke('data:export'),
+    import: (data) => ipcRenderer.invoke('data:import', data),
+  },
+  // Activity API
+  activity: {
+    getRecent: (limit) => ipcRenderer.invoke('activity:getRecent', limit),
+  },
 });

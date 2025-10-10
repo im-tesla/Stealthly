@@ -12,6 +12,9 @@ const {
   deleteProxy,
   getSettings,
   updateSettings,
+  exportAllData,
+  importAllData,
+  getRecentActivity,
 } = require('./database');
 
 function registerIpcHandlers(ipcMain) {
@@ -68,6 +71,20 @@ function registerIpcHandlers(ipcMain) {
 
   ipcMain.handle('settings:update', async (event, settings) => {
     return updateSettings(settings);
+  });
+
+  // ========== IMPORT/EXPORT ==========
+  ipcMain.handle('data:export', async () => {
+    return exportAllData();
+  });
+
+  ipcMain.handle('data:import', async (event, importData) => {
+    return importAllData(importData);
+  });
+
+  // ========== ACTIVITY ==========
+  ipcMain.handle('activity:getRecent', async (event, limit) => {
+    return getRecentActivity(limit);
   });
 }
 

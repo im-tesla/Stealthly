@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as Switch from '@radix-ui/react-switch';
-import { Database, Bell, Palette } from 'lucide-react';
+import { Database, Bell, Palette, Download, Upload } from 'lucide-react';
 
 const Settings = ({ darkMode, setDarkMode }) => {
   const [settings, setSettings] = useState({
@@ -9,6 +9,8 @@ const Settings = ({ darkMode, setDarkMode }) => {
     autoUpdate: true,
   });
   const [loading, setLoading] = useState(true);
+  const [exportStatus, setExportStatus] = useState('');
+  const [importStatus, setImportStatus] = useState('');
 
   useEffect(() => {
     loadSettings();
@@ -37,6 +39,75 @@ const Settings = ({ darkMode, setDarkMode }) => {
       console.error('Error saving settings:', error);
       // Revert on error
       setSettings(settings);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      setExportStatus('Exporting...');
+      const result = await window.api.data.export();
+      
+      if (result.success) {
+        // The data is now encrypted, save it as text (not JSON object)
+        const dataBlob = new Blob([result.data], { type: 'text/plain' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `stealthy-backup-${new Date().toISOString().split('T')[0]}.encrypted`;
+        link.click();
+        URL.revokeObjectURL(url);
+        setExportStatus('Exported successfully!');
+        setTimeout(() => setExportStatus(''), 3000);
+      } else {
+        setExportStatus('Export failed!');
+        setTimeout(() => setExportStatus(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      setExportStatus('Export failed!');
+      setTimeout(() => setExportStatus(''), 3000);
+    }
+  };
+
+  const handleImport = async () => {
+    try {
+      setImportStatus('');
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.encrypted,.json'; // Accept both encrypted and old JSON format
+      
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        try {
+          setImportStatus('Importing...');
+          const text = await file.text();
+          
+          // Pass the raw text (encrypted or JSON) to the import function
+          const result = await window.api.data.import(text);
+          
+          if (result.success) {
+            setImportStatus('Import successful! Reloading...');
+            setTimeout(() => {
+              window.location.reload();
+            }, 1500);
+          } else {
+            setImportStatus(`Import failed: ${result.error}`);
+            setTimeout(() => setImportStatus(''), 3000);
+          }
+        } catch (error) {
+          console.error('Error importing data:', error);
+          setImportStatus('Import failed! Invalid file format.');
+          setTimeout(() => setImportStatus(''), 3000);
+        }
+      };
+      
+      input.click();
+    } catch (error) {
+      console.error('Error opening file:', error);
+      setImportStatus('Import failed!');
+      setTimeout(() => setImportStatus(''), 3000);
     }
   };
 
@@ -110,6 +181,55 @@ const Settings = ({ darkMode, setDarkMode }) => {
             </div>
           </div>
         ))}
+
+        {/* Data Management Section */}
+        <div className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
+          <div className="flex items-center space-x-3 mb-6">
+            <Database className={`${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`} size={20} />
+            <h2 className="text-xl font-light">Data Management</h2>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className={`text-sm mb-4 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                Export and import your profiles, proxies, and settings. All data is encrypted for security.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={handleExport}
+                  className={`flex items-center justify-center space-x-2 py-3 rounded-lg transition-all ${
+                    darkMode 
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                      : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                  }`}
+                >
+                  <Download size={18} />
+                  <span>Export Data</span>
+                </button>
+                <button
+                  onClick={handleImport}
+                  className={`flex items-center justify-center space-x-2 py-3 rounded-lg transition-all ${
+                    darkMode 
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                      : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                  }`}
+                >
+                  <Upload size={18} />
+                  <span>Import Data</span>
+                </button>
+              </div>
+              {exportStatus && (
+                <div className={`mt-3 text-sm text-center ${exportStatus.includes('success') ? 'text-green-400' : 'text-red-400'}`}>
+                  {exportStatus}
+                </div>
+              )}
+              {importStatus && (
+                <div className={`mt-3 text-sm text-center ${importStatus.includes('success') ? 'text-green-400' : 'text-red-400'}`}>
+                  {importStatus}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
 
         <div className={`border rounded-xl p-6 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
           <h2 className="text-xl font-light mb-4">About</h2>

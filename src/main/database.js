@@ -8,6 +8,7 @@ const userDataPath = app.getPath('userData');
 const profilesDbPath = path.join(userDataPath, 'profiles.json');
 const proxiesDbPath = path.join(userDataPath, 'proxies.json');
 const settingsDbPath = path.join(userDataPath, 'settings.json');
+const activityDbPath = path.join(userDataPath, 'activity.json');
 
 // Encryption key (in production, this should be more secure)
 const ENCRYPTION_KEY = crypto.scryptSync('stealthy-secret-key', 'salt', 32);
@@ -41,10 +42,12 @@ function decrypt(text) {
 // Initialize database files if they don't exist
 function initDatabase() {
   if (!fs.existsSync(profilesDbPath)) {
-    fs.writeFileSync(profilesDbPath, JSON.stringify([], null, 2));
+    const encryptedProfiles = encrypt(JSON.stringify([]));
+    fs.writeFileSync(profilesDbPath, JSON.stringify({ data: encryptedProfiles }, null, 2));
   }
   if (!fs.existsSync(proxiesDbPath)) {
-    fs.writeFileSync(proxiesDbPath, JSON.stringify([], null, 2));
+    const encryptedProxies = encrypt(JSON.stringify([]));
+    fs.writeFileSync(proxiesDbPath, JSON.stringify({ data: encryptedProxies }, null, 2));
   }
   if (!fs.existsSync(settingsDbPath)) {
     const defaultSettings = {
@@ -56,23 +59,41 @@ function initDatabase() {
     const encryptedSettings = encrypt(JSON.stringify(defaultSettings));
     fs.writeFileSync(settingsDbPath, JSON.stringify({ data: encryptedSettings }, null, 2));
   }
+  if (!fs.existsSync(activityDbPath)) {
+    const encryptedActivity = encrypt(JSON.stringify([]));
+    fs.writeFileSync(activityDbPath, JSON.stringify({ data: encryptedActivity }, null, 2));
+  }
 }
 
-// Read data from JSON file
+// Read encrypted data from JSON file
 function readData(filePath) {
   try {
-    const data = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(data);
+    const fileData = fs.readFileSync(filePath, 'utf8');
+    const parsed = JSON.parse(fileData);
+    
+    // Check if data is encrypted (new format)
+    if (parsed.data && typeof parsed.data === 'string') {
+      const decryptedData = decrypt(parsed.data);
+      return decryptedData ? JSON.parse(decryptedData) : [];
+    }
+    
+    // Handle old unencrypted format (backward compatibility)
+    if (Array.isArray(parsed)) {
+      return parsed;
+    }
+    
+    return [];
   } catch (error) {
     console.error(`Error reading ${filePath}:`, error);
     return [];
   }
 }
 
-// Write data to JSON file
+// Write encrypted data to JSON file
 function writeData(filePath, data) {
   try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+    const encryptedData = encrypt(JSON.stringify(data));
+    fs.writeFileSync(filePath, JSON.stringify({ data: encryptedData }, null, 2));
     return { success: true };
   } catch (error) {
     console.error(`Error writing to ${filePath}:`, error);
@@ -105,6 +126,16 @@ function createProfile(profileData) {
   };
   profiles.push(newProfile);
   const result = writeData(profilesDbPath, profiles);
+  
+  // Log activity
+  if (result.success) {
+    addActivity({
+      type: 'profile_created',
+      profileName: newProfile.name,
+      details: `Profile "${newProfile.name}" created`
+    });
+  }
+  
   return result.success ? newProfile : null;
 }
 
@@ -113,17 +144,40 @@ function updateProfile(id, updates) {
   const index = profiles.findIndex(p => p.id === id);
   if (index === -1) return null;
   
+  const oldProfile = profiles[index];
   profiles[index] = { ...profiles[index], ...updates, id };
   const result = writeData(profilesDbPath, profiles);
+  
+  // Log activity
+  if (result.success) {
+    addActivity({
+      type: 'profile_edited',
+      profileName: profiles[index].name,
+      details: `Profile "${profiles[index].name}" updated`
+    });
+  }
+  
   return result.success ? profiles[index] : null;
 }
 
 function deleteProfile(id) {
   const profiles = readData(profilesDbPath);
+  const profile = profiles.find(p => p.id === id);
   const filtered = profiles.filter(p => p.id !== id);
   if (filtered.length === profiles.length) return { success: false, error: 'Profile not found' };
   
-  return writeData(profilesDbPath, filtered);
+  const result = writeData(profilesDbPath, filtered);
+  
+  // Log activity
+  if (result.success && profile) {
+    addActivity({
+      type: 'profile_deleted',
+      profileName: profile.name,
+      details: `Profile "${profile.name}" deleted`
+    });
+  }
+  
+  return result;
 }
 
 function clearProfileCookies(id) {
@@ -218,6 +272,110 @@ function updateSettings(newSettings) {
   }
 }
 
+// ========== IMPORT/EXPORT ==========
+
+function exportAllData() {
+  try {
+    const profiles = getAllProfiles();
+    const proxies = getAllProxies();
+    const settings = getSettings();
+    
+    const exportData = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      profiles,
+      proxies,
+      settings
+    };
+    
+    // Encrypt the entire export data
+    const encryptedExport = encrypt(JSON.stringify(exportData));
+    
+    return { success: true, data: encryptedExport };
+  } catch (error) {
+    console.error('Error exporting data:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+function importAllData(importData) {
+  try {
+    // Decrypt the imported data
+    let decryptedData;
+    try {
+      // Try to decrypt (new format)
+      decryptedData = decrypt(importData);
+      if (!decryptedData) {
+        throw new Error('Decryption failed');
+      }
+      decryptedData = JSON.parse(decryptedData);
+    } catch (decryptError) {
+      // If decryption fails, assume it's old unencrypted format
+      console.log('Import data not encrypted, treating as legacy format');
+      decryptedData = typeof importData === 'string' ? JSON.parse(importData) : importData;
+    }
+    
+    // Validate import data
+    if (!decryptedData || !decryptedData.profiles || !decryptedData.proxies || !decryptedData.settings) {
+      return { success: false, error: 'Invalid import data format' };
+    }
+    
+    // Import profiles
+    const encryptedProfiles = encrypt(JSON.stringify(decryptedData.profiles));
+    fs.writeFileSync(profilesDbPath, JSON.stringify({ data: encryptedProfiles }, null, 2));
+    
+    // Import proxies
+    const encryptedProxies = encrypt(JSON.stringify(decryptedData.proxies));
+    fs.writeFileSync(proxiesDbPath, JSON.stringify({ data: encryptedProxies }, null, 2));
+    
+    // Import settings
+    const encryptedSettings = encrypt(JSON.stringify(decryptedData.settings));
+    fs.writeFileSync(settingsDbPath, JSON.stringify({ data: encryptedSettings }, null, 2));
+    
+    return { success: true, message: 'Data imported successfully' };
+  } catch (error) {
+    console.error('Error importing data:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Activity Management
+function getRecentActivity(limit = 10) {
+  try {
+    const activities = readData(activityDbPath);
+    // Sort by timestamp descending and limit
+    return activities
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, limit);
+  } catch (error) {
+    console.error('Error getting recent activity:', error);
+    return [];
+  }
+}
+
+function addActivity(activityData) {
+  try {
+    const activities = readData(activityDbPath);
+    const newActivity = {
+      id: Date.now().toString(),
+      timestamp: new Date().toISOString(),
+      ...activityData
+    };
+    activities.push(newActivity);
+    
+    // Keep only last 100 activities to prevent file from growing too large
+    const trimmedActivities = activities
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 100);
+    
+    writeData(activityDbPath, trimmedActivities);
+    return newActivity;
+  } catch (error) {
+    console.error('Error adding activity:', error);
+    return null;
+  }
+}
+
 module.exports = {
   initDatabase,
   // Profiles
@@ -236,4 +394,10 @@ module.exports = {
   // Settings
   getSettings,
   updateSettings,
+  // Import/Export
+  exportAllData,
+  importAllData,
+  // Activity
+  getRecentActivity,
+  addActivity,
 };

@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle } from 'lucide-react';
 
 const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [proxyToDelete, setProxyToDelete] = useState(null);
   const [newProxy, setNewProxy] = useState({ name: '', address: '', type: 'SOCKS5' });
 
   const handleCreateProxy = async () => {
@@ -38,6 +41,13 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
         await reloadProfiles();
       }
     }
+    setDeleteDialogOpen(false);
+    setProxyToDelete(null);
+  };
+
+  const confirmDelete = (proxy) => {
+    setProxyToDelete(proxy);
+    setDeleteDialogOpen(true);
   };
 
   return (
@@ -51,8 +61,8 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
           <Dialog.Trigger asChild>
             <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
               darkMode 
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                : 'bg-zinc-800 text-white hover:bg-zinc-700'
             }`}>
               <Plus size={18} />
               <span>Add Proxy</span>
@@ -153,8 +163,8 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   disabled={!newProxy.name || !newProxy.address}
                   className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     darkMode 
-                      ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
-                      : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                      ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                      : 'bg-zinc-800 text-white hover:bg-zinc-700'
                   }`}
                 >
                   Add Proxy
@@ -169,7 +179,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
         {proxies.map((proxy) => (
           <div
             key={proxy.id}
-            className={`border rounded-xl p-6 transition-all ${
+            className={`border rounded-xl p-6 transition-smooth card-hover ${
               darkMode 
                 ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' 
                 : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
@@ -181,7 +191,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   {proxy.status === 'active' ? (
                     <CheckCircle className="text-green-400" size={20} />
                   ) : (
-                    <XCircle className={darkMode ? 'text-zinc-600' : 'text-zinc-400'} size={20} />
+                    <XCircle className={`${darkMode ? 'text-zinc-600' : 'text-zinc-400'}`} size={20} />
                   )}
                   <div>
                     <h3 className="text-lg font-light">{proxy.name}</h3>
@@ -195,16 +205,9 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                <button className={`p-2 rounded-lg transition-all ${
-                  darkMode 
-                    ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' 
-                    : 'text-zinc-500 hover:text-black hover:bg-zinc-200'
-                }`}>
-                  <Edit size={18} />
-                </button>
                 <button 
-                  onClick={() => handleDeleteProxy(proxy.id)}
-                  className={`p-2 rounded-lg transition-all ${
+                  onClick={() => confirmDelete(proxy)}
+                  className={`p-2 rounded-lg transition-smooth ${
                     darkMode 
                       ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' 
                       : 'text-zinc-500 hover:text-red-600 hover:bg-red-50'
@@ -216,6 +219,42 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
           </div>
         ))}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <AlertDialog.Content className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border rounded-xl p-6 w-[400px] shadow-2xl ${
+            darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
+          }`}>
+            <AlertDialog.Title className={`text-xl font-light mb-2 ${darkMode ? 'text-white' : 'text-black'}`}>
+              Delete Proxy
+            </AlertDialog.Title>
+            <AlertDialog.Description className={`text-sm mb-6 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              Are you sure you want to delete "{proxyToDelete?.name}"? All profiles using this proxy will be set to "No Proxy". This action cannot be undone.
+            </AlertDialog.Description>
+            <div className="flex space-x-3 justify-end">
+              <AlertDialog.Cancel asChild>
+                <button className={`px-4 py-2 rounded-lg transition-all ${
+                  darkMode 
+                    ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                    : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                }`}>
+                  Cancel
+                </button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <button 
+                  onClick={() => handleDeleteProxy(proxyToDelete?.id)}
+                  className="px-4 py-2 rounded-lg transition-all bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete
+                </button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   );
 };

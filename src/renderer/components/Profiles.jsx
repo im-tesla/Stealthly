@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
 import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie } from 'lucide-react';
@@ -7,6 +8,8 @@ import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie } from 
 const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [profileToDelete, setProfileToDelete] = useState(null);
   const [editingProfile, setEditingProfile] = useState(null);
   const [newProfile, setNewProfile] = useState({
     name: '',
@@ -72,6 +75,13 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
     if (result.success) {
       setProfiles(profiles.filter(p => p.id !== profileId));
     }
+    setDeleteDialogOpen(false);
+    setProfileToDelete(null);
+  };
+
+  const confirmDelete = (profile) => {
+    setProfileToDelete(profile);
+    setDeleteDialogOpen(true);
   };
 
   const getProxyName = (proxyId) => {
@@ -106,8 +116,8 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
           <Dialog.Trigger asChild>
             <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
               darkMode 
-                ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                : 'bg-zinc-800 text-white hover:bg-zinc-700'
             }`}>
               <Plus size={18} />
               <span>New Profile</span>
@@ -127,7 +137,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                 </Dialog.Close>
               </div>
               <Dialog.Description className={`text-sm mb-6 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                Configure your undetectable browser profile
+                Configure your undetectable profile
               </Dialog.Description>
               
               <div className="space-y-6">
@@ -236,8 +246,8 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                   disabled={!newProfile.name.trim()}
                   className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     darkMode 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                      : 'bg-zinc-800 text-white hover:bg-zinc-700'
                   }`}
                 >
                   Create Profile
@@ -252,7 +262,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
         {profiles.map((profile) => (
           <div
             key={profile.id}
-            className={`border rounded-xl p-6 transition-all ${
+            className={`border rounded-xl p-6 transition-smooth card-hover ${
               darkMode 
                 ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' 
                 : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
@@ -268,7 +278,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <div
-                    className={`w-2 h-2 rounded-full ${
+                    className={`w-2 h-2 rounded-full transition-smooth ${
                       profile.status === 'active' ? 'bg-green-400' : (darkMode ? 'bg-zinc-600' : 'bg-zinc-400')
                     }`}
                   ></div>
@@ -289,7 +299,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
             <div className="flex space-x-2">
               <button 
                 onClick={() => console.log(`Launch profile: ${profile.name}`)}
-                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-all ${
+                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-smooth ${
                   darkMode 
                     ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
                     : 'bg-zinc-200 hover:bg-zinc-300 text-black'
@@ -299,7 +309,7 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
               </button>
               <button 
                 onClick={() => handleEditProfile(profile)}
-                className={`p-2 rounded-lg transition-all ${
+                className={`p-2 rounded-lg transition-smooth ${
                   darkMode 
                     ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
                     : 'bg-zinc-200 hover:bg-zinc-300 text-black'
@@ -307,8 +317,8 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                 <Edit size={16} />
               </button>
               <button 
-                onClick={() => handleDeleteProfile(profile.id)}
-                className={`p-2 rounded-lg transition-all ${
+                onClick={() => confirmDelete(profile)}
+                className={`p-2 rounded-lg transition-smooth ${
                   darkMode 
                     ? 'bg-zinc-800 hover:bg-red-900 text-white' 
                     : 'bg-zinc-200 hover:bg-red-100 text-red-600'
@@ -464,8 +474,8 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                   disabled={!editingProfile.name.trim()}
                   className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
                     darkMode 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                      : 'bg-zinc-800 text-white hover:bg-zinc-700'
                   }`}
                 >
                   Update Profile
@@ -475,6 +485,42 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog.Root open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialog.Portal>
+          <AlertDialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <AlertDialog.Content className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border rounded-xl p-6 w-[400px] shadow-2xl ${
+            darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
+          }`}>
+            <AlertDialog.Title className={`text-xl font-light mb-2 ${darkMode ? 'text-white' : 'text-black'}`}>
+              Delete Profile
+            </AlertDialog.Title>
+            <AlertDialog.Description className={`text-sm mb-6 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              Are you sure you want to delete "{profileToDelete?.name}"? This action cannot be undone.
+            </AlertDialog.Description>
+            <div className="flex space-x-3 justify-end">
+              <AlertDialog.Cancel asChild>
+                <button className={`px-4 py-2 rounded-lg transition-all ${
+                  darkMode 
+                    ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                    : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                }`}>
+                  Cancel
+                </button>
+              </AlertDialog.Cancel>
+              <AlertDialog.Action asChild>
+                <button 
+                  onClick={() => handleDeleteProfile(profileToDelete?.id)}
+                  className="px-4 py-2 rounded-lg transition-all bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete
+                </button>
+              </AlertDialog.Action>
+            </div>
+          </AlertDialog.Content>
+        </AlertDialog.Portal>
+      </AlertDialog.Root>
     </div>
   );
 };

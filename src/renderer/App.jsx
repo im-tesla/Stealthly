@@ -94,7 +94,7 @@ const App = () => {
             <Tabs.Trigger
               key={tab.id}
               value={tab.id}
-              className={`w-14 h-14 flex items-center justify-center rounded-lg transition-all ${
+              className={`w-14 h-14 flex items-center justify-center rounded-lg transition-smooth ${
                 darkMode 
                   ? 'hover:bg-zinc-800 data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500' 
                   : 'hover:bg-zinc-200 data-[state=active]:bg-zinc-200 data-[state=active]:text-black text-zinc-500'
@@ -108,7 +108,7 @@ const App = () => {
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
           {tabs.map((tab) => (
-            <Tabs.Content key={tab.id} value={tab.id} className="flex-1 overflow-auto">
+            <Tabs.Content key={tab.id} value={tab.id} className="flex-1 overflow-auto animate-fade-in">
               {tab.id === 'profiles' ? (
                 <Profiles 
                   profiles={profiles} 
