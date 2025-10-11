@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
-import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie } from 'lucide-react';
+import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie, Square } from 'lucide-react';
 
 const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -14,11 +14,34 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const [profileToClear, setProfileToClear] = useState(null);
   const [profileToDelete, setProfileToDelete] = useState(null);
   const [editingProfile, setEditingProfile] = useState(null);
+  const [launchingProfile, setLaunchingProfile] = useState(null);
   const [newProfile, setNewProfile] = useState({
     name: '',
     untraceable: true,
     proxyId: null,
   });
+
+  // Sync active sessions with profile statuses
+  useEffect(() => {
+    const syncActiveSessions = async () => {
+      const sessions = await window.api.profiles.getActiveSessions();
+      const activeProfileIds = sessions.map(s => s.profileId);
+      
+      setProfiles(prevProfiles => 
+        prevProfiles.map(p => ({
+          ...p,
+          status: activeProfileIds.includes(p.id) ? 'active' : 'inactive'
+        }))
+      );
+    };
+
+    syncActiveSessions();
+    
+    // Sync every 2 seconds
+    const interval = setInterval(syncActiveSessions, 2000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCreateProfile = async () => {
     if (newProfile.name.trim()) {
@@ -100,6 +123,39 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
       setClearDataDialogOpen(false);
       setProfileToClear(null);
       setClearDataConfirmation('');
+    }
+  };
+
+  const handleLaunchProfile = async (profile) => {
+    try {
+      setLaunchingProfile(profile.id);
+      const result = await window.api.profiles.launch(profile.id);
+      
+      if (result.success) {
+        // Update profile status locally
+        setProfiles(prevProfiles => 
+          prevProfiles.map(p => 
+            p.id === profile.id ? { ...p, status: 'active' } : p
+          )
+        );
+      }
+    } catch (error) {
+      console.error('Error launching profile:', error);
+    } finally {
+      setLaunchingProfile(null);
+    }
+  };
+
+  const handleCloseProfile = async (profile) => {
+    try {
+      await window.api.profiles.close(profile.id);
+      setProfiles(prevProfiles => 
+        prevProfiles.map(p => 
+          p.id === profile.id ? { ...p, status: 'inactive' } : p
+        )
+      );
+    } catch (error) {
+      console.error('Error closing profile:', error);
     }
   };
 
@@ -317,14 +373,33 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
             </div>
             <div className="flex space-x-2">
               <button 
-                onClick={() => console.log(`Launch profile: ${profile.name}`)}
-                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-smooth ${
-                  darkMode 
-                    ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
-                    : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                onClick={() => profile.status === 'active' ? handleCloseProfile(profile) : handleLaunchProfile(profile)}
+                disabled={launchingProfile === profile.id}
+                className={`flex-1 flex items-center justify-center space-x-2 py-2 rounded-lg transition-smooth disabled:opacity-50 disabled:cursor-not-allowed ${
+                  profile.status === 'active'
+                    ? darkMode
+                      ? 'bg-red-900/30 hover:bg-red-900/50 text-red-400'
+                      : 'bg-red-100 hover:bg-red-200 text-red-700'
+                    : darkMode 
+                      ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                      : 'bg-zinc-200 hover:bg-zinc-300 text-black'
                 }`}>
-                <Play size={16} />
-                <span>Launch</span>
+                {launchingProfile === profile.id ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    <span>Launching...</span>
+                  </>
+                ) : profile.status === 'active' ? (
+                  <>
+                    <Square size={16} />
+                    <span>Stop</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={16} />
+                    <span>Launch</span>
+                  </>
+                )}
               </button>
               <button 
                 onClick={() => handleEditProfile(profile)}

@@ -17,6 +17,8 @@ const {
   getRecentActivity,
 } = require('./database');
 
+const browserManager = require('./browserManager');
+
 function registerIpcHandlers(ipcMain) {
   // ========== PROFILES ==========
   ipcMain.handle('profiles:getAll', async () => {
@@ -41,6 +43,55 @@ function registerIpcHandlers(ipcMain) {
 
   ipcMain.handle('profiles:clearCookies', async (event, id) => {
     return clearProfileCookies(id);
+  });
+
+  // ========== BROWSER LAUNCHING ==========
+  ipcMain.handle('profiles:launch', async (event, profileId) => {
+    try {
+      const profile = getProfile(profileId);
+      if (!profile) {
+        return { success: false, message: 'Profile not found' };
+      }
+
+      // Get proxy if configured
+      let proxy = null;
+      if (profile.proxyId) {
+        proxy = getProxy(profile.proxyId);
+      }
+
+      // Launch browser
+      const result = await browserManager.launchProfile(profile, proxy);
+      
+      // Update profile status
+      if (result.success) {
+        updateProfile(profileId, { status: 'active' });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error in profiles:launch:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('profiles:close', async (event, profileId) => {
+    try {
+      const result = await browserManager.closeProfile(profileId);
+      
+      // Update profile status
+      if (result.success) {
+        updateProfile(profileId, { status: 'inactive' });
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error in profiles:close:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('profiles:getActiveSessions', async () => {
+    return browserManager.getActiveSessions();
   });
 
   // ========== PROXIES ==========

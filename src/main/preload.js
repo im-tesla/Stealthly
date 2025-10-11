@@ -9,6 +9,9 @@ contextBridge.exposeInMainWorld('api', {
     update: (id, updates) => ipcRenderer.invoke('profiles:update', id, updates),
     delete: (id) => ipcRenderer.invoke('profiles:delete', id),
     clearCookies: (id) => ipcRenderer.invoke('profiles:clearCookies', id),
+    launch: (profileId) => ipcRenderer.invoke('profiles:launch', profileId),
+    close: (profileId) => ipcRenderer.invoke('profiles:close', profileId),
+    getActiveSessions: () => ipcRenderer.invoke('profiles:getActiveSessions'),
   },
   // Proxies API
   proxies: {
