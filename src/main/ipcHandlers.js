@@ -42,7 +42,21 @@ function registerIpcHandlers(ipcMain) {
   });
 
   ipcMain.handle('profiles:clearCookies', async (event, id) => {
-    return clearProfileCookies(id);
+    try {
+      // Check if browser is active for this profile
+      if (browserManager.isProfileActive(id)) {
+        // Close the browser first
+        await browserManager.closeProfile(id);
+        // Wait a bit for the browser to fully close
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
+      // Clear the profile data
+      return clearProfileCookies(id);
+    } catch (error) {
+      console.error('Error clearing cookies:', error);
+      return { success: false, message: error.message };
+    }
   });
 
   // ========== BROWSER LAUNCHING ==========

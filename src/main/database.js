@@ -181,9 +181,39 @@ function deleteProfile(id) {
 }
 
 function clearProfileCookies(id) {
-  // TODO: Implement actual cookie clearing logic
-  console.log(`Clearing cookies for profile ${id}`);
-  return { success: true, message: 'Cookies cleared' };
+  try {
+    // Get profile directory path
+    const os = require('os');
+    const profileDir = path.join(os.homedir(), '.stealthy', 'profiles', `profile_${id}`);
+    
+    // Check if profile directory exists
+    if (!fs.existsSync(profileDir)) {
+      return { success: true, message: 'Profile data already clear' };
+    }
+    
+    // Remove all files and subdirectories in profile directory
+    // But keep the directory itself for next launch
+    const files = fs.readdirSync(profileDir);
+    
+    for (const file of files) {
+      const filePath = path.join(profileDir, file);
+      const stat = fs.statSync(filePath);
+      
+      if (stat.isDirectory()) {
+        // Recursively delete directory
+        fs.rmSync(filePath, { recursive: true, force: true });
+      } else {
+        // Delete file
+        fs.unlinkSync(filePath);
+      }
+    }
+    
+    console.log(`✓ Cleared all data for profile ${id}`);
+    return { success: true, message: 'Profile data cleared successfully' };
+  } catch (error) {
+    console.error(`Error clearing data for profile ${id}:`, error);
+    return { success: false, message: error.message || 'Failed to clear profile data' };
+  }
 }
 
 // ========== PROXIES ==========

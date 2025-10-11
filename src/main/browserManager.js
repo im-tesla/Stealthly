@@ -1,7 +1,9 @@
-const { chromium } = require('patchright');
+const { spawn } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const { generateProxyAuthExtension, cleanupProxyAuthExtension } = require('./proxyAuthExtension');
+const { generateWebRTCProtectionExtension, cleanupWebRTCProtectionExtension } = require('./webrtcProtection');
 
 class BrowserManager {
   constructor() {
@@ -15,6 +17,44 @@ class BrowserManager {
   }
 
   /**
+   * Find Brave executable path
+   */
+  getBravePath() {
+    const platform = os.platform();
+    
+    if (platform === 'win32') {
+      const possiblePaths = [
+        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+        path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+      ];
+      
+      for (const bravePath of possiblePaths) {
+        if (fs.existsSync(bravePath)) {
+          return bravePath;
+        }
+      }
+    } else if (platform === 'darwin') {
+      return '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
+    } else {
+      // Linux
+      const possiblePaths = [
+        '/usr/bin/brave-browser',
+        '/usr/bin/brave',
+        '/snap/bin/brave',
+      ];
+      
+      for (const bravePath of possiblePaths) {
+        if (fs.existsSync(bravePath)) {
+          return bravePath;
+        }
+      }
+    }
+    
+    throw new Error('Brave browser not found. Please install Brave Browser from https://brave.com');
+  }
+
+  /**
    * Get profile data directory
    */
   getProfileDir(profileId) {
@@ -22,75 +62,173 @@ class BrowserManager {
   }
 
   /**
+   * Build proxy configuration and return URL + optional extension
+   */
+  _buildProxyConfig(proxy, profileId) {
+    const proxyType = proxy.type.toLowerCase();
+    const hasAuth = proxy.username && proxy.password;
+    
+    // SOCKS proxies: Embed credentials in URL (extensions don't work)
+    if (proxyType === 'socks5' || proxyType === 'socks') {
+      const url = hasAuth
+        ? `socks5://${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@${proxy.host}:${proxy.port}`
+        : `socks5://${proxy.host}:${proxy.port}`;
+      
+      console.log(`Using SOCKS5 proxy${hasAuth ? ' with authentication' : ''}: socks5://${hasAuth ? `${proxy.username}:***@` : ''}${proxy.host}:${proxy.port}`);
+      return { url, extensionDir: null };
+    }
+    
+    if (proxyType === 'socks4') {
+      const url = hasAuth
+        ? `socks4://${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@${proxy.host}:${proxy.port}`
+        : `socks4://${proxy.host}:${proxy.port}`;
+      
+      console.log(`Using SOCKS4 proxy${hasAuth ? ' with authentication' : ''}`);
+      return { url, extensionDir: null };
+    }
+    
+    // HTTP/HTTPS proxies: Use extension for authentication
+    const protocol = proxyType === 'https' ? 'https' : 'http';
+    const url = `${protocol}://${proxy.host}:${proxy.port}`;
+    const extensionDir = hasAuth ? generateProxyAuthExtension(proxy, profileId) : null;
+    
+    console.log(`Using ${protocol.toUpperCase()} proxy${hasAuth ? ' with extension-based auth' : ''}: ${url}`);
+    if (extensionDir) {
+      console.log(`✓ Proxy authentication extension loaded`);
+    }
+    
+    return { url, extensionDir };
+  }
+
+  /**
+   * Build base browser arguments
+   */
+  _buildBrowserArgs(profileDir) {
+    return [
+      `--user-data-dir=${profileDir}`,
+      '--no-first-run',
+      '--no-default-browser-check',
+      '--disable-sync',
+      '--disable-background-networking',
+      '--disable-popup-blocking',
+      '--disable-notifications',
+      '--enable-gpu',
+      '--enable-automation',
+      '--no-sandbox',
+      '--start-maximized',
+      '--password-store=basic',
+      '--use-mock-keychain',
+      '--disable-blink-features=AutomationControlled',
+      '--disable-features=OptimizationHints,TranslateUI',
+      '--disable-dev-shm-usage',
+      '--lang=en-US',
+      '--force-webrtc-ip-handling-policy=default_public_interface_only',
+      '--enforce-webrtc-ip-permission-check',
+      '--window-size=1280,800',
+      '--window-position=100,100',
+      '--enable-features=NetworkService,NetworkServiceInProcess',
+      '--metrics-recording-only',
+      '--disable-default-apps'
+    ];
+  }
+
+  /**
+   * Setup process event handlers
+   */
+  _setupProcessHandlers(browserProcess, profile, extensionDir, webrtcExtensionDir) {
+    browserProcess.on('exit', (code) => {
+      console.log(`Browser closed for profile: ${profile.name} (exit code: ${code})`);
+      
+      if (extensionDir) {
+        cleanupProxyAuthExtension(profile.id);
+      }
+      
+      if (webrtcExtensionDir) {
+        cleanupWebRTCProtectionExtension(profile.id);
+      }
+      
+      this.activeBrowsers.delete(profile.id);
+      
+      const db = require('./database');
+      db.updateProfile(profile.id, { status: 'inactive' });
+    });
+
+    browserProcess.on('error', (err) => {
+      console.error(`Browser process error for profile ${profile.name}:`, err);
+      this.activeBrowsers.delete(profile.id);
+    });
+  }
+
+  /**
    * Launch browser for a profile
    */
   async launchProfile(profile, proxy = null) {
     try {
-      // Check if browser is already running for this profile
+      // Check if already running
       if (this.activeBrowsers.has(profile.id)) {
         const existing = this.activeBrowsers.get(profile.id);
-        if (existing.isConnected()) {
+        if (existing.process && !existing.process.killed) {
           console.log(`Browser already running for profile: ${profile.name}`);
           return { success: true, message: 'Browser already running', profileId: profile.id };
-        } else {
-          // Clean up disconnected browser
-          this.activeBrowsers.delete(profile.id);
         }
+        this.activeBrowsers.delete(profile.id);
       }
 
+      // Prepare profile directory
       const profileDir = this.getProfileDir(profile.id);
-      
-      // Ensure profile directory exists
       if (!fs.existsSync(profileDir)) {
         fs.mkdirSync(profileDir, { recursive: true });
       }
 
-      // Base context options
-      const contextOptions = {
-        channel: 'chrome',
-        headless: false,
-      };
+      // Build launch arguments
+      const bravePath = this.getBravePath();
+      const braveArgs = this._buildBrowserArgs(profileDir);
+      let extensionDir = null;
+      const extensionsToLoad = [];
 
-      // Add proxy if configured
+      // Add WebRTC leak protection extension
+      const webrtcExtensionDir = generateWebRTCProtectionExtension(profile.id);
+      extensionsToLoad.push(webrtcExtensionDir);
+      console.log('✓ WebRTC leak protection enabled');
+
+      // Add proxy configuration
       if (proxy) {
-        let proxyServer = `${proxy.type.toLowerCase()}://${proxy.host}:${proxy.port}`;
+        const proxyConfig = this._buildProxyConfig(proxy, profile.id);
+        braveArgs.push(`--proxy-server=${proxyConfig.url}`);
+        extensionDir = proxyConfig.extensionDir;
         
-        contextOptions.proxy = {
-          server: proxyServer
-        };
-
-        // Add authentication if provided
-        if (proxy.username && proxy.password) {
-          contextOptions.proxy.username = proxy.username;
-          contextOptions.proxy.password = proxy.password;
+        if (extensionDir) {
+          extensionsToLoad.push(extensionDir);
         }
-
-        console.log(`Using proxy: ${proxyServer} ${proxy.username ? '(authenticated)' : ''}`);
       }
 
-      let context;
+      // Load all extensions
+      if (extensionsToLoad.length > 0) {
+        braveArgs.push(`--load-extension=${extensionsToLoad.join(',')}`);
+      }
 
-      console.log(`Launching profile: ${profile.name}`);
-      // Launch with Patchright in stealth mode using persistent context
-      context = await chromium.launchPersistentContext(profileDir, contextOptions);
-  
-      // Listen for context close event (manual or programmatic)
-      context.on('close', () => {
-        console.log(`Browser context closed for profile: ${profile.name}`);
-        this.activeBrowsers.delete(profile.id);
-        
-        // Update profile status in database
-        const db = require('./database');
-        db.updateProfile(profile.id, { status: 'inactive' });
+      // Launch browser
+      console.log(`Launching Brave browser for profile: ${profile.name}`);
+      console.log(`Launch args:`, braveArgs.join(' '));
+      
+      const browserProcess = spawn(bravePath, braveArgs, {
+        detached: false,
+        stdio: 'ignore'
       });
 
-      this.activeBrowsers.set(profile.id, { context });
+      // Setup event handlers
+      this._setupProcessHandlers(browserProcess, profile, extensionDir, webrtcExtensionDir);
 
-      // Open new page
-      const page = await context.newPage();
-      await page.goto('https://fingerprint.com/demo/');
+      // Store browser instance
+      this.activeBrowsers.set(profile.id, { 
+        process: browserProcess,
+        profileDir,
+        extensionDir,
+        webrtcExtensionDir,
+        startTime: new Date()
+      });
 
-      console.log(`✓ Browser launched successfully for profile: ${profile.name}`);
+      console.log(`✓ Brave browser launched successfully for profile: ${profile.name}`);
       return { 
         success: true, 
         message: 'Browser launched successfully', 
@@ -112,13 +250,31 @@ class BrowserManager {
    */
   async closeProfile(profileId) {
     try {
-      if (!this.activeBrowsers.has(profileId)) {
+      const browserData = this.activeBrowsers.get(profileId);
+      
+      if (!browserData) {
         return { success: false, message: 'Browser not running for this profile' };
       }
 
-      const { context } = this.activeBrowsers.get(profileId);
+      const { process: browserProcess, extensionDir, webrtcExtensionDir } = browserData;
       
-      await context.close();
+      // Kill browser process
+      if (browserProcess && !browserProcess.killed) {
+        if (os.platform() === 'win32') {
+          spawn('taskkill', ['/pid', browserProcess.pid, '/t', '/f']);
+        } else {
+          browserProcess.kill('SIGTERM');
+        }
+      }
+      
+      // Cleanup extensions if they exist
+      if (extensionDir) {
+        cleanupProxyAuthExtension(profileId);
+      }
+      
+      if (webrtcExtensionDir) {
+        cleanupWebRTCProtectionExtension(profileId);
+      }
       
       this.activeBrowsers.delete(profileId);
       
@@ -138,8 +294,8 @@ class BrowserManager {
     if (!this.activeBrowsers.has(profileId)) {
       return false;
     }
-    const { context } = this.activeBrowsers.get(profileId);
-    return context && !context._closed;
+    const { process: browserProcess } = this.activeBrowsers.get(profileId);
+    return browserProcess && !browserProcess.killed;
   }
 
   /**
@@ -148,10 +304,11 @@ class BrowserManager {
   getActiveSessions() {
     const sessions = [];
     for (const [profileId, data] of this.activeBrowsers.entries()) {
-      if (data.context && !data.context._closed) {
+      if (data.process && !data.process.killed) {
         sessions.push({
           profileId,
-          isConnected: true
+          isConnected: true,
+          startTime: data.startTime
         });
       }
     }
