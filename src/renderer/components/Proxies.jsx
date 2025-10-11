@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
-import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle } from 'lucide-react';
+import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 
 const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [proxyToDelete, setProxyToDelete] = useState(null);
+  const [checkingProxies, setCheckingProxies] = useState(new Set());
   const [newProxy, setNewProxy] = useState({ 
     name: '', 
     address: '', 
@@ -15,6 +16,46 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
     username: '',
     password: ''
   });
+
+  // Check all proxies on mount
+  useEffect(() => {
+    checkAllProxies();
+  }, []);
+
+  const checkProxy = async (proxy) => {
+    setCheckingProxies(prev => new Set(prev).add(proxy.id));
+    
+    try {
+      const result = await window.api.proxies.check(proxy);
+      const newStatus = result.success ? 'active' : 'error';
+      
+      // Update proxy status in database
+      await window.api.proxies.update(proxy.id, { status: newStatus });
+      
+      // Update local state
+      setProxies(prevProxies => 
+        prevProxies.map(p => p.id === proxy.id ? { ...p, status: newStatus } : p)
+      );
+    } catch (error) {
+      console.error('Error checking proxy:', error);
+      await window.api.proxies.update(proxy.id, { status: 'error' });
+      setProxies(prevProxies => 
+        prevProxies.map(p => p.id === proxy.id ? { ...p, status: 'error' } : p)
+      );
+    } finally {
+      setCheckingProxies(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(proxy.id);
+        return newSet;
+      });
+    }
+  };
+
+  const checkAllProxies = async () => {
+    for (const proxy of proxies) {
+      await checkProxy(proxy);
+    }
+  };
 
   const handleCreateProxy = async () => {
     if (newProxy.name && newProxy.address) {
@@ -35,6 +76,9 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
           setProxies([...proxies, createdProxy]);
           setNewProxy({ name: '', address: '', type: 'SOCKS5', username: '', password: '' });
           setIsDialogOpen(false);
+          
+          // Check the newly created proxy
+          setTimeout(() => checkProxy(createdProxy), 500);
         }
       }
     }
@@ -65,19 +109,35 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
           <h1 className="text-3xl font-semibold mb-2 tracking-tight">Proxies</h1>
           <p className={`text-base font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Manage your proxy servers</p>
         </div>
-        <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <Dialog.Trigger asChild>
-            <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+        <div className="flex items-center space-x-3">
+          <button 
+            onClick={checkAllProxies}
+            disabled={checkingProxies.size > 0}
+            className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+              checkingProxies.size > 0
+                ? 'opacity-50 cursor-not-allowed'
+                : ''
+            } ${
               darkMode 
-                ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
-                : 'bg-zinc-800 text-white hover:bg-zinc-700'
+                ? 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700 border border-zinc-700' 
+                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 border border-zinc-300'
             }`}>
-              <Plus size={18} />
-              <span>Add Proxy</span>
-            </button>
-          </Dialog.Trigger>
-          <Dialog.Portal>
-            <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+            <RefreshCw size={18} className={checkingProxies.size > 0 ? 'animate-spin' : ''} />
+            <span>Check All</span>
+          </button>
+          <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog.Trigger asChild>
+              <button className={`flex items-center space-x-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                darkMode 
+                  ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                  : 'bg-zinc-800 text-white hover:bg-zinc-700'
+              }`}>
+                <Plus size={18} />
+                <span>Add Proxy</span>
+              </button>
+            </Dialog.Trigger>
+            <Dialog.Portal>
+              <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
             <Dialog.Content className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border rounded-xl p-6 w-[400px] shadow-2xl ${
               darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
             }`}>
@@ -115,7 +175,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                     value={newProxy.address}
                     onChange={(e) => setNewProxy({ ...newProxy, address: e.target.value })}
                     placeholder="123.45.67.89:8080"
-                    className={`w-full border rounded-lg px-4 py-2.5 font-mono transition-colors focus:outline-none ${
+                    className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
                       darkMode 
                         ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
                         : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
@@ -218,6 +278,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -233,10 +294,12 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-3">
-                  {proxy.status === 'active' ? (
+                  {checkingProxies.has(proxy.id) ? (
+                    <RefreshCw className="text-blue-400 animate-spin" size={20} />
+                  ) : proxy.status === 'active' ? (
                     <CheckCircle className="text-green-400" size={20} />
                   ) : (
-                    <XCircle className={`${darkMode ? 'text-zinc-600' : 'text-zinc-400'}`} size={20} />
+                    <XCircle className="text-red-400" size={20} />
                   )}
                   <div>
                     <h3 className="text-lg font-light">{proxy.name}</h3>
@@ -270,6 +333,18 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                 </div>
               </div>
               <div className="flex items-center space-x-2">
+                <button 
+                  onClick={() => checkProxy(proxy)}
+                  disabled={checkingProxies.has(proxy.id)}
+                  className={`p-2 rounded-lg transition-smooth ${
+                    checkingProxies.has(proxy.id)
+                      ? 'opacity-50 cursor-not-allowed'
+                      : darkMode 
+                        ? 'text-zinc-500 hover:text-blue-400 hover:bg-zinc-800' 
+                        : 'text-zinc-500 hover:text-blue-600 hover:bg-blue-50'
+                  }`}>
+                  <RefreshCw size={18} />
+                </button>
                 <button 
                   onClick={() => confirmDelete(proxy)}
                   className={`p-2 rounded-lg transition-smooth ${

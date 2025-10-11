@@ -1,44 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import * as Switch from '@radix-ui/react-switch';
-import { Database, Bell, Palette, Download, Upload } from 'lucide-react';
+import { Database, Palette, Download, Upload } from 'lucide-react';
 
 const Settings = ({ darkMode, setDarkMode }) => {
-  const [settings, setSettings] = useState({
-    autoLaunch: false,
-    notifications: true,
-    autoUpdate: true,
-  });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [exportStatus, setExportStatus] = useState('');
   const [importStatus, setImportStatus] = useState('');
+  const [appVersion, setAppVersion] = useState('Loading...');
 
   useEffect(() => {
-    loadSettings();
+    loadAppVersion();
   }, []);
 
-  const loadSettings = async () => {
+  const loadAppVersion = async () => {
     try {
-      const savedSettings = await window.api.settings.get();
-      if (savedSettings) {
-        setSettings(savedSettings);
-      }
+      const version = await window.api.app.getVersion();
+      setAppVersion(version);
     } catch (error) {
-      console.error('Error loading settings:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const toggleSetting = async (key) => {
-    const newSettings = { ...settings, [key]: !settings[key] };
-    setSettings(newSettings);
-    
-    try {
-      await window.api.settings.update(newSettings);
-    } catch (error) {
-      console.error('Error saving settings:', error);
-      // Revert on error
-      setSettings(settings);
+      console.error('Error loading app version:', error);
+      setAppVersion('Unknown');
     }
   };
 
@@ -113,14 +93,6 @@ const Settings = ({ darkMode, setDarkMode }) => {
 
   const settingGroups = [
     {
-      title: 'Application',
-      icon: Database,
-      settings: [
-        { key: 'autoLaunch', label: 'Launch on Startup', description: 'Start Stealthy when system boots' },
-        { key: 'notifications', label: 'Notifications', description: 'Show desktop notifications' },
-      ],
-    },
-    {
       title: 'Appearance',
       icon: Palette,
       settings: [
@@ -128,14 +100,6 @@ const Settings = ({ darkMode, setDarkMode }) => {
       ],
     },
   ];
-
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center">
-        <div className={`text-sm ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Loading settings...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-8">
@@ -162,8 +126,8 @@ const Settings = ({ darkMode, setDarkMode }) => {
                     <div className={`text-xs font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>{setting.description}</div>
                   </div>
                   <Switch.Root
-                    checked={setting.key === 'darkMode' ? darkMode : settings[setting.key]}
-                    onCheckedChange={() => setting.key === 'darkMode' ? setDarkMode(!darkMode) : toggleSetting(setting.key)}
+                    checked={darkMode}
+                    onCheckedChange={() => setDarkMode(!darkMode)}
                     className={`w-11 h-6 rounded-full relative transition-colors ${
                       darkMode 
                         ? 'bg-zinc-800 data-[state=checked]:bg-white' 
@@ -236,7 +200,7 @@ const Settings = ({ darkMode, setDarkMode }) => {
           <div className="space-y-2 text-sm font-medium">
             <div className={`flex justify-between ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               <span>Version:</span>
-              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>0.1.0001</span>
+              <span className={`font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>{appVersion}</span>
             </div>
             <div className={`flex justify-between ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
               <span>Build:</span>

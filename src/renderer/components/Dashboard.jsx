@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Users, Globe, Shield } from 'lucide-react';
+import { Activity, Users, Globe, Package } from 'lucide-react';
 
 const Dashboard = ({ profiles, proxies, darkMode }) => {
   const [activities, setActivities] = useState([]);
+  const [extensions, setExtensions] = useState([]);
 
   useEffect(() => {
     loadActivities();
+    loadExtensions();
   }, [profiles]); // Reload when profiles change
 
   const loadActivities = async () => {
@@ -17,12 +19,18 @@ const Dashboard = ({ profiles, proxies, darkMode }) => {
     }
   };
 
+  const loadExtensions = async () => {
+    try {
+      const allExtensions = await window.api.extensions.getAll();
+      setExtensions(allExtensions);
+    } catch (error) {
+      console.error('Error loading extensions:', error);
+    }
+  };
+
   const activeProfiles = profiles.filter(p => p.status === 'active').length;
   const totalProxies = proxies.length;
-  const untraceableProfiles = profiles.filter(p => p.untraceable).length;
-  const protectionRate = profiles.length > 0 
-    ? Math.round((untraceableProfiles / profiles.length) * 100) 
-    : 100;
+  const enabledExtensions = extensions.filter(e => e.enabled).length;
 
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
@@ -52,9 +60,9 @@ const Dashboard = ({ profiles, proxies, darkMode }) => {
 
   const stats = [
     { label: 'Active Profiles', value: activeProfiles.toString(), icon: Users, color: 'text-blue-400' },
-    { label: 'Proxies', value: totalProxies.toString(), icon: Globe, color: 'text-green-400' },
     { label: 'Total Profiles', value: profiles.length.toString(), icon: Activity, color: 'text-purple-400' },
-    { label: 'Protected', value: `${protectionRate}%`, icon: Shield, color: 'text-emerald-400' },
+    { label: 'Proxies', value: totalProxies.toString(), icon: Globe, color: 'text-green-400' },
+    { label: 'Extensions', value: enabledExtensions.toString(), icon: Package, color: 'text-orange-400' },
   ];
 
   return (

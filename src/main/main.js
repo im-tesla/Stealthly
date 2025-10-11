@@ -13,9 +13,17 @@ if (!app.isPackaged) {
 }
 
 function createWindow() {
+  // Determine icon path based on environment
+  const iconPath = app.isPackaged
+    ? path.join(process.resourcesPath, 'icons', 'icon.ico')
+    : path.join(__dirname, '..', '..', 'icons', 'icon.ico');
+
   const win = new BrowserWindow({
-    width: 1280,
-    height: 768,
+    width: 1300,
+    height: 900,
+    minWidth: 1300,
+    minHeight: 900,
+    resizable: true,
     autoHideMenuBar: true,
     menuBarVisible: false,
     frame: true,
@@ -28,7 +36,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    icon: path.join(__dirname, '../../icons/favicon.ico'),
+    icon: iconPath,
   });
 
   win.loadFile(path.join(__dirname, '../../dist/index.html'));

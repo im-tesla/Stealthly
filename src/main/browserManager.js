@@ -23,35 +23,47 @@ class BrowserManager {
     const platform = os.platform();
     
     if (platform === 'win32') {
-      const possiblePaths = [
-        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-        path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-      ];
+      // In production, extraResources are in process.resourcesPath
+      // In development, they're relative to the project root
+      const { app } = require('electron');
+      const isPackaged = app.isPackaged;
       
-      for (const bravePath of possiblePaths) {
-        if (fs.existsSync(bravePath)) {
-          return bravePath;
-        }
+      const possiblePaths = [];
+      
+      // Check for portable version bundled with app first
+      if (isPackaged) {
+        // Production: extraResources are in app.getPath('exe')/../resources/
+        possiblePaths.push(path.join(process.resourcesPath, 'browsers', 'brave-win64', 'brave.exe'));
+      } else {
+        // Development: relative to project root
+        possiblePaths.push(path.join(__dirname, '..', '..', 'browsers', 'brave-win64', 'brave.exe'));
       }
-    } else if (platform === 'darwin') {
-      return '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser';
-    } else {
-      // Linux
-      const possiblePaths = [
-        '/usr/bin/brave-browser',
-        '/usr/bin/brave',
-        '/snap/bin/brave',
-      ];
+      
+      // Then check system installations as fallback
+      possiblePaths.push(
+        path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
+        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe')
+      );
       
       for (const bravePath of possiblePaths) {
         if (fs.existsSync(bravePath)) {
+          console.log('Using Brave browser:', bravePath);
           return bravePath;
         }
       }
     }
     
-    throw new Error('Brave browser not found. Please install Brave Browser from https://brave.com');
+    console.error('Brave browser not found! Please install Brave from https://brave.com');
+    return null;
+  }
+
+  /**
+   * Check if Brave is available
+   */
+  isBraveAvailable() {
+    const bravePath = this.getBravePath();
+    return bravePath !== null;
   }
 
   /**
@@ -162,7 +174,7 @@ class BrowserManager {
   /**
    * Launch browser for a profile
    */
-  async launchProfile(profile, proxy = null) {
+  async launchProfile(profile, proxy = null, userExtensions = []) {
     try {
       // Check if already running
       if (this.activeBrowsers.has(profile.id)) {
@@ -190,6 +202,19 @@ class BrowserManager {
       const webrtcExtensionDir = generateWebRTCProtectionExtension(profile.id);
       extensionsToLoad.push(webrtcExtensionDir);
       console.log('✓ WebRTC leak protection enabled');
+
+      // Add user extensions (all enabled extensions globally)
+      if (userExtensions && userExtensions.length > 0) {
+        console.log(`Loading ${userExtensions.length} user extension(s):`);
+        for (const extension of userExtensions) {
+          if (extension.path && fs.existsSync(extension.path)) {
+            extensionsToLoad.push(extension.path);
+            console.log(`  ✓ ${extension.name}`);
+          } else {
+            console.warn(`  ⚠ Extension path not found: ${extension.name} at ${extension.path}`);
+          }
+        }
+      }
 
       // Add proxy configuration
       if (proxy) {

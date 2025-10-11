@@ -2,5 +2,8 @@ node_modules/
 dist/
 release/
 src/build/output.css
+browsers/*
+!browsers/.gitkeep
+!browsers/README.md
 .DS_Store
 .vscode/

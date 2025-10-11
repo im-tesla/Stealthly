@@ -7,6 +7,7 @@ const crypto = require('crypto');
 const userDataPath = app.getPath('userData');
 const profilesDbPath = path.join(userDataPath, 'profiles.json');
 const proxiesDbPath = path.join(userDataPath, 'proxies.json');
+const extensionsDbPath = path.join(userDataPath, 'extensions.json');
 const settingsDbPath = path.join(userDataPath, 'settings.json');
 const activityDbPath = path.join(userDataPath, 'activity.json');
 
@@ -48,6 +49,10 @@ function initDatabase() {
   if (!fs.existsSync(proxiesDbPath)) {
     const encryptedProxies = encrypt(JSON.stringify([]));
     fs.writeFileSync(proxiesDbPath, JSON.stringify({ data: encryptedProxies }, null, 2));
+  }
+  if (!fs.existsSync(extensionsDbPath)) {
+    const encryptedExtensions = encrypt(JSON.stringify([]));
+    fs.writeFileSync(extensionsDbPath, JSON.stringify({ data: encryptedExtensions }, null, 2));
   }
   if (!fs.existsSync(settingsDbPath)) {
     const defaultSettings = {
@@ -117,7 +122,6 @@ function createProfile(profileData) {
   const newProfile = {
     id: Date.now(),
     name: profileData.name,
-    untraceable: profileData.untraceable || false,
     proxyId: profileData.proxyId || null,
     status: 'idle',
     createdAt: new Date().toISOString(),
@@ -277,6 +281,88 @@ function deleteProxy(id) {
   return writeData(proxiesDbPath, filtered);
 }
 
+// ========== EXTENSIONS ==========
+
+function getAllExtensions() {
+  return readData(extensionsDbPath);
+}
+
+function getExtension(id) {
+  const extensions = readData(extensionsDbPath);
+  return extensions.find(e => e.id === id);
+}
+
+function createExtension(extensionData) {
+  const extensions = readData(extensionsDbPath);
+  const newExtension = {
+    id: Date.now(),
+    name: extensionData.name,
+    path: extensionData.path,
+    description: extensionData.description || '',
+    version: extensionData.version || '1.0',
+    manifestVersion: extensionData.manifestVersion || null,
+    icons: extensionData.icons || null,
+    iconDataUrl: extensionData.iconDataUrl || null,
+    enabled: true,
+    createdAt: new Date().toISOString(),
+    ...extensionData
+  };
+  extensions.push(newExtension);
+  const result = writeData(extensionsDbPath, extensions);
+  
+  // Log activity
+  if (result.success) {
+    addActivity({
+      type: 'extension_added',
+      extensionName: newExtension.name,
+      details: `Extension "${newExtension.name}" v${newExtension.version} added`
+    });
+  }
+  
+  return result.success ? newExtension : null;
+}
+
+function updateExtension(id, updates) {
+  const extensions = readData(extensionsDbPath);
+  const index = extensions.findIndex(e => e.id === id);
+  if (index === -1) return null;
+  
+  extensions[index] = { ...extensions[index], ...updates, id };
+  const result = writeData(extensionsDbPath, extensions);
+  return result.success ? extensions[index] : null;
+}
+
+function deleteExtension(id) {
+  const extensions = readData(extensionsDbPath);
+  const extension = extensions.find(e => e.id === id);
+  const filtered = extensions.filter(e => e.id !== id);
+  if (filtered.length === extensions.length) return { success: false, error: 'Extension not found' };
+  
+  // Update all profiles using this extension to remove it
+  const profiles = readData(profilesDbPath);
+  const updatedProfiles = profiles.map(profile => {
+    if (profile.extensionIds && profile.extensionIds.includes(id)) {
+      return { ...profile, extensionIds: profile.extensionIds.filter(eid => eid !== id) };
+    }
+    return profile;
+  });
+  
+  // Save updated profiles
+  writeData(profilesDbPath, updatedProfiles);
+  
+  // Log activity
+  if (extension) {
+    addActivity({
+      type: 'extension_deleted',
+      extensionName: extension.name,
+      details: `Extension "${extension.name}" deleted`
+    });
+  }
+  
+  // Save updated extensions
+  return writeData(extensionsDbPath, filtered);
+}
+
 // ========== SETTINGS ==========
 
 function getSettings() {
@@ -421,6 +507,12 @@ module.exports = {
   createProxy,
   updateProxy,
   deleteProxy,
+  // Extensions
+  getAllExtensions,
+  getExtension,
+  createExtension,
+  updateExtension,
+  deleteExtension,
   // Settings
   getSettings,
   updateSettings,

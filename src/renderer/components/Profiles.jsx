@@ -5,7 +5,7 @@ import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
 import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie, Square } from 'lucide-react';
 
-const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
+const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -17,7 +17,6 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
   const [launchingProfile, setLaunchingProfile] = useState(null);
   const [newProfile, setNewProfile] = useState({
     name: '',
-    untraceable: true,
     proxyId: null,
   });
 
@@ -47,7 +46,6 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
     if (newProfile.name.trim()) {
       const profileData = {
         name: newProfile.name,
-        untraceable: newProfile.untraceable,
         proxyId: newProfile.proxyId,
         status: 'inactive',
       };
@@ -57,7 +55,6 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
         setProfiles([...profiles, createdProfile]);
         setNewProfile({
           name: '',
-          untraceable: true,
           proxyId: null,
         });
         setIsDialogOpen(false);
@@ -78,7 +75,6 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
       const updates = {
         name: editingProfile.name,
         proxyId: editingProfile.proxyId,
-        untraceable: editingProfile.untraceable,
       };
       
       const updatedProfile = await window.api.profiles.update(editingProfile.id, updates);
@@ -212,30 +208,10 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
                 </Dialog.Close>
               </div>
               <Dialog.Description className={`text-sm font-medium mb-6 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
-                Configure your undetectable profile
+                Configure your browser profile with maximum privacy protection
               </Dialog.Description>
               
               <div className="space-y-6">
-                {/* Untraceable Toggle */}
-                <div className={`border rounded-lg p-4 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Shield className={`${newProfile.untraceable ? 'text-green-400' : (darkMode ? 'text-zinc-600' : 'text-zinc-400')}`} size={20} />
-                      <div>
-                        <div className={`text-sm font-semibold ${darkMode ? 'text-white' : 'text-black'}`}>Untraceable Mode</div>
-                        <div className={`text-xs font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Maximum privacy protection</div>
-                      </div>
-                    </div>
-                    <Switch.Root
-                      checked={newProfile.untraceable}
-                      onCheckedChange={(checked) => setNewProfile({ ...newProfile, untraceable: checked })}
-                      className="w-11 h-6 bg-zinc-800 rounded-full relative data-[state=checked]:bg-green-400 transition-colors"
-                    >
-                      <Switch.Thumb className="block w-5 h-5 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-5" />
-                    </Switch.Root>
-                  </div>
-                </div>
-
                 {/* Profile Name */}
                 <div>
                   <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Profile Name *</label>
@@ -347,9 +323,6 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-1">
                   <h3 className="text-lg font-light">{profile.name}</h3>
-                  {profile.untraceable && (
-                    <Shield className="text-green-400" size={16} />
-                  )}
                 </div>
                 <div className="flex items-center space-x-2">
                   <div
@@ -445,26 +418,6 @@ const Profiles = ({ profiles, setProfiles, proxies, darkMode }) => {
             
             {editingProfile && (
               <div className="space-y-6">
-                {/* Untraceable Toggle */}
-                <div className={`border rounded-lg p-4 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <Shield className={`${editingProfile.untraceable ? 'text-green-400' : (darkMode ? 'text-zinc-600' : 'text-zinc-400')}`} size={20} />
-                      <div>
-                        <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-black'}`}>Untraceable Mode</div>
-                        <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>Maximum privacy protection</div>
-                      </div>
-                    </div>
-                    <Switch.Root
-                      checked={editingProfile.untraceable}
-                      onCheckedChange={(checked) => setEditingProfile({ ...editingProfile, untraceable: checked })}
-                      className="w-11 h-6 bg-zinc-800 rounded-full relative data-[state=checked]:bg-green-400 transition-colors"
-                    >
-                      <Switch.Thumb className="block w-5 h-5 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-5" />
-                    </Switch.Root>
-                  </div>
-                </div>
-
                 {/* Profile Name */}
                 <div>
                   <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Profile Name *</label>

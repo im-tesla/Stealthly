@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { LayoutDashboard, User, Globe, Settings } from 'lucide-react';
+import { LayoutDashboard, User, Globe, Package, Settings } from 'lucide-react';
 import Dashboard from './components/Dashboard';
 import Profiles from './components/Profiles';
 import Proxies from './components/Proxies';
+import Extensions from './components/Extensions';
 import SettingsPage from './components/Settings';
 
 const App = () => {
@@ -11,6 +12,7 @@ const App = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [proxies, setProxies] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [extensions, setExtensions] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Load data from backend on mount
@@ -20,13 +22,15 @@ const App = () => {
 
   const loadData = async () => {
     try {
-      const [proxiesData, profilesData, settingsData] = await Promise.all([
+      const [proxiesData, profilesData, extensionsData, settingsData] = await Promise.all([
         window.api.proxies.getAll(),
         window.api.profiles.getAll(),
+        window.api.extensions.getAll(),
         window.api.settings.get()
       ]);
       setProxies(proxiesData || []);
       setProfiles(profilesData || []);
+      setExtensions(extensionsData || []);
       
       // Load dark mode from settings
       if (settingsData && typeof settingsData.darkMode === 'boolean') {
@@ -70,6 +74,7 @@ const App = () => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, component: Dashboard },
     { id: 'profiles', label: 'Profiles', icon: User, component: Profiles },
     { id: 'proxies', label: 'Proxies', icon: Globe, component: Proxies },
+    { id: 'extensions', label: 'Extensions', icon: Package, component: Extensions },
     { id: 'settings', label: 'Settings', icon: Settings, component: SettingsPage },
   ];
 
@@ -113,7 +118,8 @@ const App = () => {
                 <Profiles 
                   profiles={profiles} 
                   setProfiles={setProfiles}
-                  proxies={proxies} 
+                  proxies={proxies}
+                  extensions={extensions}
                   darkMode={darkMode} 
                 />
               ) : tab.id === 'proxies' ? (
@@ -123,10 +129,16 @@ const App = () => {
                   reloadProfiles={reloadProfiles}
                   darkMode={darkMode} 
                 />
+              ) : tab.id === 'extensions' ? (
+                <Extensions 
+                  extensions={extensions} 
+                  setExtensions={setExtensions}
+                  darkMode={darkMode} 
+                />
               ) : tab.id === 'settings' ? (
                 <SettingsPage darkMode={darkMode} setDarkMode={handleDarkModeToggle} />
               ) : (
-                <tab.component profiles={profiles} proxies={proxies} darkMode={darkMode} />
+                <tab.component profiles={profiles} proxies={proxies} extensions={extensions} darkMode={darkMode} />
               )}
             </Tabs.Content>
           ))}

@@ -22,7 +22,8 @@
 - Create unlimited browser profiles with isolated sessions
 - Each profile maintains separate cookies, cache, and storage
 - Launch profiles independently without interference
-- **Untraceable Mode**: Advanced fingerprint protection
+- **Maximum Privacy Protection**: Advanced fingerprint protection enabled for all profiles
+- **Automatic Brave Setup**: Browser installed automatically during setup
 
 ### 🌐 **Proxy Integration**
 - Support for SOCKS5, SOCKS4, HTTP, and HTTPS proxies
@@ -63,7 +64,8 @@
 
 - **Node.js** v16 or higher
 - **npm** or **yarn** package manager
-- **Windows 10/11**, macOS, or Linux
+- **Windows 10/11** (64-bit) - *Currently Windows-only*
+- **Note**: Brave Browser portable is bundled with the app - no separate installation needed!
 
 ### Installation
 
@@ -74,22 +76,38 @@ git clone https://github.com/im-tesla/Stealthly.git
 # Navigate to project directory
 cd Stealthly
 
-# Install dependencies
+# Install dependencies (will automatically download Brave Browser portable)
 npm install
 
 # Start development server
 npm run dev
 ```
 
+### Manual Brave Browser Download (if needed)
+
+```bash
+# Download Brave Browser portable if automatic download failed
+npm run download-brave
+```
+
+**Note**: The portable Brave browser is automatically downloaded during `npm install` and bundled with the final app. No admin rights required!
+
 ### Building for Production
 
 ```bash
-# Build React bundle
-npm run build
+# Build the complete installer with bundled Brave Browser
+npm run dist
 
-# Start Electron app
-npm start
+# The installer will be created in the release/ directory
+# File: Stealthly-{version}-x64-Setup.exe
 ```
+
+**What's included in the installer:**
+- ✅ Stealthly application
+- ✅ Brave Browser portable (no separate installation needed)
+- ✅ All dependencies and resources
+- ✅ Works offline after installation
+- ✅ No admin rights required for Brave
 
 ---
 
@@ -101,9 +119,10 @@ npm start
 2. Click **"New Profile"** button
 3. Enter profile details:
    - **Name**: Unique identifier for your profile
-   - **Untraceable**: Enable advanced fingerprint protection
    - **Proxy**: Select from configured proxies or "No Proxy"
 4. Click **"Create Profile"**
+
+All profiles automatically include maximum privacy protection with advanced fingerprint protection.
 
 ### Adding a Proxy
 
@@ -166,7 +185,8 @@ Stealthly/
 │   │   ├── main.js              # Electron main process
 │   │   ├── preload.js           # Preload script with contextBridge
 │   │   ├── ipcHandlers.js       # IPC communication handlers
-│   │   └── database.js          # Encrypted database operations
+│   │   ├── database.js          # Encrypted database operations
+│   │   └── browserManager.js   # Browser launch & profile management
 │   ├── renderer/
 │   │   ├── index.html           # HTML entry point
 │   │   ├── index.jsx            # React entry point
@@ -180,10 +200,17 @@ Stealthly/
 │   │       └── input.css        # Tailwind & custom styles
 │   └── build/
 │       └── output.css           # Compiled CSS
+├── browsers/
+│   ├── brave-win64/             # Brave Browser portable (auto-downloaded)
+│   │   └── brave.exe            # Brave executable
+│   ├── .gitkeep                 # Ensures directory is tracked
+│   └── README.md                # Browser setup documentation
 ├── dist/                        # Webpack build output
+├── release/                     # Production builds
 ├── icons/                       # App icons & favicons
 ├── scripts/
-│   └── build-css.js            # CSS build script
+│   ├── build-css.js            # CSS build script
+│   └── download-brave.js       # Brave Browser download script
 ├── package.json                 # Dependencies & scripts
 ├── webpack.config.js            # Webpack configuration
 ├── tailwind.config.js           # Tailwind CSS config
@@ -297,7 +324,6 @@ The app uses `electron-reloader` for automatic restarts during development. Chan
 {
   id: 1697123456789,
   name: "Work Profile",
-  untraceable: true,
   proxyId: 1697123456780,
   status: "idle",              // "idle" | "active"
   createdAt: "2025-10-11T00:00:00.000Z",
