@@ -220,6 +220,48 @@ function clearProfileCookies(id) {
   }
 }
 
+function duplicateProfile(id, newProfileData) {
+  const profiles = readData(profilesDbPath);
+  const sourceProfile = profiles.find(p => p.id === id);
+  
+  if (!sourceProfile) {
+    return { success: false, error: 'Source profile not found' };
+  }
+  
+  // Create a new profile with data from source profile
+  // NOTE: We do NOT copy the user directory - only the configuration
+  const duplicatedProfile = {
+    id: Date.now(),
+    name: newProfileData.name,
+    proxyId: newProfileData.proxyId !== undefined ? newProfileData.proxyId : sourceProfile.proxyId,
+    startupUrl: newProfileData.startupUrl !== undefined ? newProfileData.startupUrl : sourceProfile.startupUrl,
+    status: 'inactive',
+    createdAt: new Date().toISOString(),
+    lastUsed: null,
+    // Copy any other custom properties from the source profile (except id, createdAt, lastUsed, status)
+    ...(Object.keys(sourceProfile).reduce((acc, key) => {
+      if (!['id', 'name', 'proxyId', 'startupUrl', 'status', 'createdAt', 'lastUsed'].includes(key)) {
+        acc[key] = sourceProfile[key];
+      }
+      return acc;
+    }, {}))
+  };
+  
+  profiles.push(duplicatedProfile);
+  const result = writeData(profilesDbPath, profiles);
+  
+  // Log activity
+  if (result.success) {
+    addActivity({
+      type: 'profile_duplicated',
+      profileName: duplicatedProfile.name,
+      details: `Profile "${duplicatedProfile.name}" duplicated from "${sourceProfile.name}"`
+    });
+  }
+  
+  return result.success ? duplicatedProfile : null;
+}
+
 // ========== PROXIES ==========
 
 function getAllProxies() {
@@ -501,6 +543,7 @@ module.exports = {
   updateProfile,
   deleteProfile,
   clearProfileCookies,
+  duplicateProfile,
   // Proxies
   getAllProxies,
   getProxy,

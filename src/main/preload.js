@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
     create: (profileData) => ipcRenderer.invoke('profiles:create', profileData),
     update: (id, updates) => ipcRenderer.invoke('profiles:update', id, updates),
     delete: (id) => ipcRenderer.invoke('profiles:delete', id),
+    duplicate: (id, newProfileData) => ipcRenderer.invoke('profiles:duplicate', id, newProfileData),
     clearCookies: (id) => ipcRenderer.invoke('profiles:clearCookies', id),
     launch: (profileId) => ipcRenderer.invoke('profiles:launch', profileId),
     close: (profileId) => ipcRenderer.invoke('profiles:close', profileId),

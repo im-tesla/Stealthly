@@ -5,6 +5,7 @@ const {
   updateProfile,
   deleteProfile,
   clearProfileCookies,
+  duplicateProfile,
   getAllProxies,
   getProxy,
   createProxy,
@@ -44,6 +45,10 @@ function registerIpcHandlers(ipcMain) {
 
   ipcMain.handle('profiles:delete', async (event, id) => {
     return deleteProfile(id);
+  });
+
+  ipcMain.handle('profiles:duplicate', async (event, id, newProfileData) => {
+    return duplicateProfile(id, newProfileData);
   });
 
   ipcMain.handle('profiles:clearCookies', async (event, id) => {

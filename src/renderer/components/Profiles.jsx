@@ -3,19 +3,26 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
-import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie, Square } from 'lucide-react';
+import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie, Square, Copy } from 'lucide-react';
 
 const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [clearDataDialogOpen, setClearDataDialogOpen] = useState(false);
   const [clearDataConfirmation, setClearDataConfirmation] = useState('');
   const [profileToClear, setProfileToClear] = useState(null);
   const [profileToDelete, setProfileToDelete] = useState(null);
+  const [profileToDuplicate, setProfileToDuplicate] = useState(null);
   const [editingProfile, setEditingProfile] = useState(null);
   const [launchingProfile, setLaunchingProfile] = useState(null);
   const [newProfile, setNewProfile] = useState({
+    name: '',
+    proxyId: null,
+    startupUrl: '',
+  });
+  const [duplicateProfile, setDuplicateProfile] = useState({
     name: '',
     proxyId: null,
     startupUrl: '',
@@ -114,6 +121,38 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
     setProfileToClear(profile);
     setClearDataConfirmation('');
     setClearDataDialogOpen(true);
+  };
+
+  const handleDuplicateProfile = (profile) => {
+    setProfileToDuplicate(profile);
+    setDuplicateProfile({
+      name: `${profile.name} (Copy)`,
+      proxyId: profile.proxyId,
+      startupUrl: profile.startupUrl || '',
+    });
+    setIsDuplicateDialogOpen(true);
+  };
+
+  const handleCreateDuplicate = async () => {
+    if (duplicateProfile.name.trim() && profileToDuplicate) {
+      const newProfileData = {
+        name: duplicateProfile.name,
+        proxyId: duplicateProfile.proxyId,
+        startupUrl: duplicateProfile.startupUrl.trim() || 'about:blank',
+      };
+      
+      const createdProfile = await window.api.profiles.duplicate(profileToDuplicate.id, newProfileData);
+      if (createdProfile) {
+        setProfiles([...profiles, createdProfile]);
+        setIsDuplicateDialogOpen(false);
+        setProfileToDuplicate(null);
+        setDuplicateProfile({
+          name: '',
+          proxyId: null,
+          startupUrl: '',
+        });
+      }
+    }
   };
 
   const handleClearData = async () => {
@@ -408,7 +447,18 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                 )}
               </button>
               <button 
+                onClick={() => handleDuplicateProfile(profile)}
+                title="Duplicate profile"
+                className={`p-2 rounded-lg transition-smooth ${
+                  darkMode 
+                    ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
+                    : 'bg-zinc-200 hover:bg-zinc-300 text-black'
+                }`}>
+                <Copy size={16} />
+              </button>
+              <button 
                 onClick={() => handleEditProfile(profile)}
+                title="Edit profile"
                 className={`p-2 rounded-lg transition-smooth ${
                   darkMode 
                     ? 'bg-zinc-800 hover:bg-zinc-700 text-white' 
@@ -418,6 +468,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
               </button>
               <button 
                 onClick={() => confirmDelete(profile)}
+                title="Delete profile"
                 className={`p-2 rounded-lg transition-smooth ${
                   darkMode 
                     ? 'bg-zinc-800 hover:bg-red-900 text-white' 
@@ -580,6 +631,150 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                 </button>
               </div>
             )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Duplicate Profile Dialog */}
+      <Dialog.Root open={isDuplicateDialogOpen} onOpenChange={setIsDuplicateDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <Dialog.Content className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border rounded-xl p-6 w-[500px] shadow-2xl max-h-[90vh] overflow-y-auto ${
+            darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className={`text-xl font-semibold tracking-tight ${darkMode ? 'text-white' : 'text-black'}`}>Duplicate Profile</Dialog.Title>
+              <Dialog.Close asChild>
+                <button className={`transition-colors ${darkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-500 hover:text-black'}`}>
+                  <X size={20} />
+                </button>
+              </Dialog.Close>
+            </div>
+            <Dialog.Description className={`text-sm font-medium mb-6 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+              Create a copy of "{profileToDuplicate?.name}" with new settings. User data will not be duplicated.
+            </Dialog.Description>
+            
+            <div className="space-y-6">
+              {/* Profile Name */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Profile Name *</label>
+                <input
+                  type="text"
+                  value={duplicateProfile.name}
+                  onChange={(e) => setDuplicateProfile({ ...duplicateProfile, name: e.target.value })}
+                  placeholder="e.g., Work Profile, Shopping, Social Media"
+                  className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none transition-colors ${
+                    darkMode 
+                      ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                      : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                  }`}
+                />
+              </div>
+
+              {/* Startup URL */}
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                  Startup URL <span className={`text-xs font-normal ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>(Optional)</span>
+                </label>
+                <input
+                  type="url"
+                  value={duplicateProfile.startupUrl}
+                  onChange={(e) => setDuplicateProfile({ ...duplicateProfile, startupUrl: e.target.value })}
+                  placeholder="https://example.com or leave empty for default"
+                  className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none transition-colors ${
+                    darkMode 
+                      ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                      : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                  }`}
+                />
+                <p className={`text-xs mt-1.5 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                  This URL will open automatically when launching the browser
+                </p>
+              </div>
+
+              {/* Proxy Section */}
+              <div className={`border rounded-lg p-4 space-y-4 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <label className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-black'}`}>Proxy Configuration</label>
+                  <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>(Optional)</div>
+                </div>
+
+                {/* Proxy Selection */}
+                <div>
+                  <label className={`block text-sm mb-2 ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Select Proxy</label>
+                  <Select.Root 
+                    value={duplicateProfile.proxyId?.toString() || 'none'} 
+                    onValueChange={(value) => setDuplicateProfile({ ...duplicateProfile, proxyId: value === 'none' ? null : parseInt(value) })}
+                  >
+                    <Select.Trigger className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none transition-colors flex items-center justify-between ${
+                      darkMode 
+                        ? 'bg-zinc-900 border-zinc-800 text-white focus:border-zinc-600' 
+                        : 'bg-white border-zinc-300 text-black focus:border-zinc-400'
+                    }`}>
+                      <Select.Value placeholder="No Proxy" />
+                      <Select.Icon>
+                        <ChevronDown size={16} className="text-zinc-500" />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Content className={`border rounded-lg shadow-2xl overflow-hidden z-50 ${
+                        darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
+                      }`}>
+                        <Select.Viewport className="p-1">
+                          <Select.Item value="none" className={`px-4 py-2.5 cursor-pointer outline-none flex items-center justify-between rounded ${
+                            darkMode ? 'text-white hover:bg-zinc-800' : 'text-black hover:bg-zinc-100'
+                          }`}>
+                            <Select.ItemText>No Proxy</Select.ItemText>
+                            <Select.ItemIndicator>
+                              <Check size={16} className="text-green-400" />
+                            </Select.ItemIndicator>
+                          </Select.Item>
+                          {proxies.map((proxy) => (
+                            <Select.Item 
+                              key={proxy.id} 
+                              value={proxy.id.toString()} 
+                              className={`px-4 py-2.5 cursor-pointer outline-none rounded ${
+                                darkMode ? 'text-white hover:bg-zinc-800' : 'text-black hover:bg-zinc-100'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between w-full">
+                                <div>
+                                  <Select.ItemText>{proxy.name}</Select.ItemText>
+                                  <div className={`text-xs ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{proxy.host}:{proxy.port} • {proxy.type}</div>
+                                </div>
+                                <Select.ItemIndicator>
+                                  <Check size={16} className="text-green-400" />
+                                </Select.ItemIndicator>
+                              </div>
+                            </Select.Item>
+                          ))}
+                        </Select.Viewport>
+                      </Select.Content>
+                    </Select.Portal>
+                  </Select.Root>
+                </div>
+              </div>
+
+              {/* Info Box */}
+              <div className={`border rounded-lg p-4 ${darkMode ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50 border-blue-200'}`}>
+                <div className={`text-sm ${darkMode ? 'text-blue-300' : 'text-blue-800'}`}>
+                  <strong>Note:</strong> Only the profile configuration will be duplicated. Browser history, cookies, and other user data will not be copied.
+                </div>
+              </div>
+
+              {/* Create Button */}
+              <button
+                onClick={handleCreateDuplicate}
+                disabled={!duplicateProfile.name.trim()}
+                className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
+                  darkMode 
+                    ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                    : 'bg-zinc-800 text-white hover:bg-zinc-700'
+                }`}
+              >
+                Duplicate Profile
+              </button>
+            </div>
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
