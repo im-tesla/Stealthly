@@ -31,6 +31,7 @@
       "src/main/**/*",
       "package.json"
     ],
+    "afterPack": "scripts/after-pack.js",
     "extraResources": [
       {
         "from": "icons",

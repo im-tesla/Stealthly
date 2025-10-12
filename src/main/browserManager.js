@@ -137,7 +137,7 @@ class BrowserManager {
       '--force-webrtc-ip-handling-policy=default_public_interface_only',
       '--enforce-webrtc-ip-permission-check',
       '--window-size=1280,800',
-      '--window-position=100,100',
+      `--window-position=${Math.floor(Math.random() * 300)},${Math.floor(Math.random() * 300)}`,
       '--enable-features=NetworkService,NetworkServiceInProcess',
       '--metrics-recording-only',
       '--disable-default-apps'
