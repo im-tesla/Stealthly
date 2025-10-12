@@ -132,14 +132,13 @@ class BrowserManager {
       '--disable-features=OptimizationHints,TranslateUI,InterestCohort',
       '--password-store=basic',
       `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
-      '--window-size=1366,768',
       '--force-webrtc-ip-handling-policy=default_public_interface_only',
       '--enforce-webrtc-ip-permission-check',
       '--dns-prefetch-disable',
       '--no-referrers',
       '--safebrowsing-disable-auto-update',
       '--disable-breakpad',
-      'https://demo.fingerprint.com/playground'
+      'https://fingerprint.com/demo/'
     ];
   }
 
