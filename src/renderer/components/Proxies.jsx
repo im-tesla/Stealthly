@@ -2,14 +2,24 @@ import React, { useState, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
-import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle, RefreshCw, Copy } from 'lucide-react';
 
 const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [proxyToDelete, setProxyToDelete] = useState(null);
+  const [editingProxy, setEditingProxy] = useState(null);
   const [checkingProxies, setCheckingProxies] = useState(new Set());
   const [newProxy, setNewProxy] = useState({ 
+    name: '', 
+    address: '', 
+    type: 'SOCKS5',
+    username: '',
+    password: ''
+  });
+  const [editProxy, setEditProxy] = useState({ 
     name: '', 
     address: '', 
     type: 'SOCKS5',
@@ -100,6 +110,56 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const confirmDelete = (proxy) => {
     setProxyToDelete(proxy);
     setDeleteDialogOpen(true);
+  };
+
+  const handleEditProxy = (proxy) => {
+    setEditingProxy(proxy);
+    setEditProxy({
+      name: proxy.name,
+      address: `${proxy.host}:${proxy.port}`,
+      type: proxy.type,
+      username: proxy.username || '',
+      password: proxy.password || ''
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateProxy = async () => {
+    if (editProxy.name && editProxy.address && editingProxy) {
+      const [host, port] = editProxy.address.split(':');
+      if (host && port) {
+        const proxyData = {
+          name: editProxy.name,
+          host: host.trim(),
+          port: port.trim(),
+          type: editProxy.type,
+          username: editProxy.username || null,
+          password: editProxy.password || null,
+        };
+        
+        const updatedProxy = await window.api.proxies.update(editingProxy.id, proxyData);
+        if (updatedProxy) {
+          setProxies(proxies.map(p => p.id === editingProxy.id ? updatedProxy : p));
+          setEditProxy({ name: '', address: '', type: 'SOCKS5', username: '', password: '' });
+          setEditingProxy(null);
+          setIsEditDialogOpen(false);
+          
+          // Check the updated proxy
+          setTimeout(() => checkProxy(updatedProxy), 500);
+        }
+      }
+    }
+  };
+
+  const handleDuplicateProxy = (proxy) => {
+    setNewProxy({
+      name: `${proxy.name} (Copy)`,
+      address: `${proxy.host}:${proxy.port}`,
+      type: proxy.type,
+      username: proxy.username || '',
+      password: proxy.password || ''
+    });
+    setIsDialogOpen(true);
   };
 
   return (
@@ -281,6 +341,151 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
         </div>
       </div>
 
+      {/* Edit Proxy Dialog */}
+      <Dialog.Root open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/70 backdrop-blur-sm" />
+          <Dialog.Content className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 border rounded-xl p-6 w-[400px] shadow-2xl ${
+            darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-zinc-300'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <Dialog.Title className={`text-xl font-semibold tracking-tight ${darkMode ? 'text-white' : 'text-black'}`}>Edit Proxy</Dialog.Title>
+              <Dialog.Close asChild>
+                <button className={`transition-colors ${darkMode ? 'text-zinc-500 hover:text-white' : 'text-zinc-500 hover:text-black'}`}>
+                  <X size={20} />
+                </button>
+              </Dialog.Close>
+            </div>
+            <Dialog.Description className={`text-sm mb-6 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+              Update the proxy server configuration
+            </Dialog.Description>
+            <div className="space-y-5">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Proxy Name *</label>
+                <input
+                  type="text"
+                  value={editProxy.name}
+                  onChange={(e) => setEditProxy({ ...editProxy, name: e.target.value })}
+                  placeholder="US Proxy 1"
+                  className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
+                    darkMode 
+                      ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                      : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                  }`}
+                />
+              </div>
+              
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>IP:Port *</label>
+                <input
+                  type="text"
+                  value={editProxy.address}
+                  onChange={(e) => setEditProxy({ ...editProxy, address: e.target.value })}
+                  placeholder="123.45.67.89:8080"
+                  className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
+                    darkMode 
+                      ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                      : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className={`block text-sm font-medium mb-3 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>Proxy Type</label>
+                <ToggleGroup.Root
+                  type="single"
+                  value={editProxy.type}
+                  onValueChange={(value) => value && setEditProxy({ ...editProxy, type: value })}
+                  className={`inline-flex border rounded-lg p-1 w-full ${
+                    darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-100 border-zinc-300'
+                  }`}
+                >
+                  <ToggleGroup.Item
+                    value="SOCKS5"
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                      darkMode 
+                        ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
+                        : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
+                    }`}
+                  >
+                    SOCKS5
+                  </ToggleGroup.Item>
+                  <ToggleGroup.Item
+                    value="HTTPS"
+                    className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+                      darkMode 
+                        ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
+                        : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
+                    }`}
+                  >
+                    HTTPS
+                  </ToggleGroup.Item>
+                  <ToggleGroup.Item
+                    value="HTTP"
+                    className={`flex-1 px-4 py-2 text-sm rounded-md transition-all ${
+                      darkMode 
+                        ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
+                        : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
+                    }`}
+                  >
+                    HTTP
+                  </ToggleGroup.Item>
+                </ToggleGroup.Root>
+              </div>
+
+              <div className={`border-t pt-4 ${darkMode ? 'border-zinc-800' : 'border-zinc-200'}`}>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                  Authentication (Optional)
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <input
+                      type="text"
+                      value={editProxy.username}
+                      onChange={(e) => setEditProxy({ ...editProxy, username: e.target.value })}
+                      placeholder="Username"
+                      className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
+                        darkMode 
+                          ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                          : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <input
+                      type="password"
+                      value={editProxy.password}
+                      onChange={(e) => setEditProxy({ ...editProxy, password: e.target.value })}
+                      placeholder="Password"
+                      className={`w-full border rounded-lg px-4 py-2.5 transition-colors focus:outline-none ${
+                        darkMode 
+                          ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                          : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                      }`}
+                    />
+                  </div>
+                </div>
+                <p className={`text-xs mt-2 ${darkMode ? 'text-zinc-600' : 'text-zinc-500'}`}>
+                  Leave empty if your proxy doesn't require authentication
+                </p>
+              </div>
+
+              <button
+                onClick={handleUpdateProxy}
+                disabled={!editProxy.name || !editProxy.address}
+                className={`w-full py-3 rounded-lg transition-all font-medium disabled:opacity-50 disabled:cursor-not-allowed ${
+                  darkMode 
+                    ? 'bg-zinc-700 text-white hover:bg-zinc-600' 
+                    : 'bg-zinc-800 text-white hover:bg-zinc-700'
+                }`}
+              >
+                Update Proxy
+              </button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       <div className="space-y-4">
         {proxies.map((proxy) => (
           <div
@@ -345,15 +550,59 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   }`}>
                   <RefreshCw size={18} />
                 </button>
-                <button 
-                  onClick={() => confirmDelete(proxy)}
-                  className={`p-2 rounded-lg transition-smooth ${
-                    darkMode 
-                      ? 'text-zinc-500 hover:text-red-400 hover:bg-zinc-800' 
-                      : 'text-zinc-500 hover:text-red-600 hover:bg-red-50'
-                  }`}>
-                  <Trash2 size={18} />
-                </button>
+                
+                <DropdownMenu.Root>
+                  <DropdownMenu.Trigger asChild>
+                    <button className={`p-2 rounded-lg transition-smooth ${
+                      darkMode 
+                        ? 'text-zinc-500 hover:text-white hover:bg-zinc-800' 
+                        : 'text-zinc-500 hover:text-black hover:bg-zinc-100'
+                    }`}>
+                      <MoreVertical size={18} />
+                    </button>
+                  </DropdownMenu.Trigger>
+                  <DropdownMenu.Portal>
+                    <DropdownMenu.Content 
+                      className={`min-w-[180px] rounded-lg p-1 shadow-xl border ${
+                        darkMode 
+                          ? 'bg-zinc-900 border-zinc-800' 
+                          : 'bg-white border-zinc-200'
+                      }`}
+                      sideOffset={5}
+                    >
+                      <DropdownMenu.Item
+                        onClick={() => handleEditProxy(proxy)}
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+                          darkMode 
+                            ? 'text-zinc-300 hover:bg-zinc-800' 
+                            : 'text-zinc-700 hover:bg-zinc-100'
+                        }`}
+                      >
+                        <Edit size={16} />
+                        <span>Edit</span>
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Item
+                        onClick={() => handleDuplicateProxy(proxy)}
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+                          darkMode 
+                            ? 'text-zinc-300 hover:bg-zinc-800' 
+                            : 'text-zinc-700 hover:bg-zinc-100'
+                        }`}
+                      >
+                        <Copy size={16} />
+                        <span>Duplicate</span>
+                      </DropdownMenu.Item>
+                      <DropdownMenu.Separator className={`h-px my-1 ${darkMode ? 'bg-zinc-800' : 'bg-zinc-200'}`} />
+                      <DropdownMenu.Item
+                        onClick={() => confirmDelete(proxy)}
+                        className="flex items-center space-x-2 px-3 py-2 rounded-md cursor-pointer transition-colors text-red-500 hover:bg-red-950"
+                      >
+                        <Trash2 size={16} />
+                        <span>Delete</span>
+                      </DropdownMenu.Item>
+                    </DropdownMenu.Content>
+                  </DropdownMenu.Portal>
+                </DropdownMenu.Root>
               </div>
             </div>
           </div>

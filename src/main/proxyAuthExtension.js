@@ -17,7 +17,7 @@ function generateProxyAuthExtension(proxy, profileId) {
   // Create manifest.json
   const manifest = {
     manifest_version: 3,
-    name: 'Proxy Authentication',
+    name: 'Stealthy Proxy Authentication',
     version: '1.0.0',
     description: 'Handles proxy authentication automatically',
     permissions: [

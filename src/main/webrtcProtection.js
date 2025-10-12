@@ -19,7 +19,7 @@ function generateWebRTCProtectionExtension(profileId) {
     manifest_version: 3,
     name: 'Stealthy WebRTC Protection',
     version: '1.0.0',
-    description: 'Prevents WebRTC IP leaks by disabling non-proxied connections',
+    description: 'DONT DISABLE THIS EXTENSION, OTHERWISE YOUR REAL IP MAY BE EXPOSED VIA WEBRTC!',
     permissions: ['privacy'],
     background: {
       service_worker: 'background.js'

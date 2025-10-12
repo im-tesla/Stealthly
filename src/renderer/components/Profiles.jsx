@@ -48,7 +48,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const profileData = {
         name: newProfile.name,
         proxyId: newProfile.proxyId,
-        startupUrl: newProfile.startupUrl.trim() || null,
+        startupUrl: newProfile.startupUrl.trim() || 'about:blank',
         status: 'inactive',
       };
       
@@ -78,7 +78,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const updates = {
         name: editingProfile.name,
         proxyId: editingProfile.proxyId,
-        startupUrl: editingProfile.startupUrl?.trim() || null,
+        startupUrl: editingProfile.startupUrl?.trim() || 'about:blank',
       };
       
       const updatedProfile = await window.api.profiles.update(editingProfile.id, updates);
@@ -364,14 +364,14 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                 <span>Proxy:</span>
                 <span>{getProxyName(profile.proxyId)}</span>
               </div>
-              {profile.startupUrl && (
-                <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
-                  <span>Start URL:</span>
-                  <span className="truncate ml-2 max-w-[180px]" title={profile.startupUrl}>
-                    {new URL(profile.startupUrl).hostname}
-                  </span>
-                </div>
-              )}
+              <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                <span>Start URL:</span>
+                <span className="truncate ml-2 max-w-[180px]" title={profile.startupUrl || 'about:blank'}>
+                  {profile.startupUrl && profile.startupUrl !== 'about:blank' 
+                    ? new URL(profile.startupUrl).hostname 
+                    : 'about:blank'}
+                </span>
+              </div>
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Created:</span>
                 <span>{formatDate(profile.createdAt)}</span>
