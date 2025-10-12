@@ -116,31 +116,30 @@ class BrowserManager {
    * Build base browser arguments
    */
   _buildBrowserArgs(profileDir) {
+    // Get system language (e.g., 'en-US', 'es-ES', 'de-DE')
+    const systemLang = require('electron').app.getLocale() || 'en-US';
+
     return [
       `--user-data-dir=${profileDir}`,
       '--no-first-run',
       '--no-default-browser-check',
+      `--lang=${systemLang}`,
       '--disable-sync',
       '--disable-background-networking',
-      '--disable-popup-blocking',
-      '--disable-notifications',
-      '--enable-gpu',
-      '--enable-automation',
-      '--no-sandbox',
-      '--start-maximized',
+      '--disable-default-apps',
+      '--disable-component-update',
+      '--disable-domain-reliability',
+      '--disable-features=OptimizationHints,TranslateUI,InterestCohort',
       '--password-store=basic',
-      '--use-mock-keychain',
-      '--disable-blink-features=AutomationControlled',
-      '--disable-features=OptimizationHints,TranslateUI',
-      '--disable-dev-shm-usage',
-      '--lang=en-US',
+      `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
+      '--window-size=1366,768',
       '--force-webrtc-ip-handling-policy=default_public_interface_only',
       '--enforce-webrtc-ip-permission-check',
-      '--window-size=1280,800',
-      `--window-position=${Math.floor(Math.random() * 300)},${Math.floor(Math.random() * 300)}`,
-      '--enable-features=NetworkService,NetworkServiceInProcess',
-      '--metrics-recording-only',
-      '--disable-default-apps'
+      '--dns-prefetch-disable',
+      '--no-referrers',
+      '--safebrowsing-disable-auto-update',
+      '--disable-breakpad',
+      'https://demo.fingerprint.com/playground'
     ];
   }
 
@@ -197,6 +196,17 @@ class BrowserManager {
       const braveArgs = this._buildBrowserArgs(profileDir);
       let extensionDir = null;
       const extensionsToLoad = [];
+
+      // Add Stealthy Fingerprint Protection extension (always first)
+      const { app } = require('electron');
+      const stealthyFingerprintExt = app.isPackaged
+        ? path.join(process.resourcesPath, 'extension', 'stealthy_fingerprint')
+        : path.join(__dirname, '..', '..', 'extension', 'stealthy_fingerprint');
+      
+      if (fs.existsSync(stealthyFingerprintExt)) {
+        extensionsToLoad.push(stealthyFingerprintExt);
+        console.log('✓ Stealthy Fingerprint Protection enabled');
+      }
 
       // Add WebRTC leak protection extension
       const webrtcExtensionDir = generateWebRTCProtectionExtension(profile.id);

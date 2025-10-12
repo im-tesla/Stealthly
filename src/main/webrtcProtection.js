@@ -17,7 +17,7 @@ function generateWebRTCProtectionExtension(profileId) {
   // Create manifest.json
   const manifest = {
     manifest_version: 3,
-    name: 'WebRTC Leak Protection',
+    name: 'Stealthy WebRTC Protection',
     version: '1.0.0',
     description: 'Prevents WebRTC IP leaks by disabling non-proxied connections',
     permissions: ['privacy'],
