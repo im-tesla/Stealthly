@@ -115,9 +115,12 @@ class BrowserManager {
   /**
    * Build base browser arguments
    */
-  _buildBrowserArgs(profileDir) {
+  _buildBrowserArgs(profileDir, startupUrl = null) {
     // Get system language (e.g., 'en-US', 'es-ES', 'de-DE')
     const systemLang = require('electron').app.getLocale() || 'en-US';
+    
+    // Use custom startup URL or default
+    const url = startupUrl || 'about:blank';
 
     return [
       `--user-data-dir=${profileDir}`,
@@ -135,10 +138,12 @@ class BrowserManager {
       '--force-webrtc-ip-handling-policy=default_public_interface_only',
       '--enforce-webrtc-ip-permission-check',
       '--dns-prefetch-disable',
+      '--dns-over-https-server=https://cloudflare-dns.com/dns-query',
+      '--enable-features=DnsOverHttps',
       '--no-referrers',
       '--safebrowsing-disable-auto-update',
       '--disable-breakpad',
-      'https://fingerprint.com/demo/'
+      url
     ];
   }
 
@@ -192,7 +197,7 @@ class BrowserManager {
 
       // Build launch arguments
       const bravePath = this.getBravePath();
-      const braveArgs = this._buildBrowserArgs(profileDir);
+      const braveArgs = this._buildBrowserArgs(profileDir, profile.startupUrl);
       let extensionDir = null;
       const extensionsToLoad = [];
 

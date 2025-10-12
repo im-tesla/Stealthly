@@ -18,6 +18,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
   const [newProfile, setNewProfile] = useState({
     name: '',
     proxyId: null,
+    startupUrl: '',
   });
 
   // Sync active sessions with profile statuses
@@ -47,6 +48,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const profileData = {
         name: newProfile.name,
         proxyId: newProfile.proxyId,
+        startupUrl: newProfile.startupUrl.trim() || null,
         status: 'inactive',
       };
       
@@ -56,6 +58,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
         setNewProfile({
           name: '',
           proxyId: null,
+          startupUrl: '',
         });
         setIsDialogOpen(false);
       }
@@ -75,6 +78,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const updates = {
         name: editingProfile.name,
         proxyId: editingProfile.proxyId,
+        startupUrl: editingProfile.startupUrl?.trim() || null,
       };
       
       const updatedProfile = await window.api.profiles.update(editingProfile.id, updates);
@@ -228,6 +232,27 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                   />
                 </div>
 
+                {/* Startup URL */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                    Startup URL <span className={`text-xs font-normal ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>(Optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={newProfile.startupUrl}
+                    onChange={(e) => setNewProfile({ ...newProfile, startupUrl: e.target.value })}
+                    placeholder="https://example.com or leave empty for default"
+                    className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none transition-colors ${
+                      darkMode 
+                        ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                        : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                    }`}
+                  />
+                  <p className={`text-xs mt-1.5 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                    This URL will open automatically when launching the browser
+                  </p>
+                </div>
+
                 {/* Proxy Section */}
                 <div className={`border rounded-lg p-4 space-y-4 ${darkMode ? 'bg-zinc-950 border-zinc-800' : 'bg-zinc-50 border-zinc-200'}`}>
                   <div className="flex items-center justify-between mb-2">
@@ -339,6 +364,14 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                 <span>Proxy:</span>
                 <span>{getProxyName(profile.proxyId)}</span>
               </div>
+              {profile.startupUrl && (
+                <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                  <span>Start URL:</span>
+                  <span className="truncate ml-2 max-w-[180px]" title={profile.startupUrl}>
+                    {new URL(profile.startupUrl).hostname}
+                  </span>
+                </div>
+              )}
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Created:</span>
                 <span>{formatDate(profile.createdAt)}</span>
@@ -432,6 +465,27 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                         : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
                     }`}
                   />
+                </div>
+
+                {/* Startup URL */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-zinc-300' : 'text-zinc-700'}`}>
+                    Startup URL <span className={`text-xs font-normal ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>(Optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={editingProfile.startupUrl || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, startupUrl: e.target.value })}
+                    placeholder="https://example.com or leave empty for default"
+                    className={`w-full border rounded-lg px-4 py-2.5 focus:outline-none transition-colors ${
+                      darkMode 
+                        ? 'bg-zinc-950 border-zinc-800 text-white placeholder:text-zinc-600 focus:border-zinc-600' 
+                        : 'bg-white border-zinc-300 text-black placeholder:text-zinc-400 focus:border-zinc-400'
+                    }`}
+                  />
+                  <p className={`text-xs mt-1.5 ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
+                    This URL will open automatically when launching the browser
+                  </p>
                 </div>
 
                 {/* Proxy Selection */}

@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Stealthy Fingerprint Protection",
+  "description": "Dont remove this extension, it is essential for Stealthly to function properly.",
+  "version": "0.3",
+  "permissions": [
+    "scripting",
+    "tabs",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": [
+        "spoofers/webgl.js",
+        "spoofers/audio.js",
+        "spoofers/screen.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true,
+      "match_about_blank": true,
+      "world": "MAIN"
+    }
+  ]
+}
