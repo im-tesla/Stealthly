@@ -201,17 +201,6 @@ class BrowserManager {
       let extensionDir = null;
       const extensionsToLoad = [];
 
-      // Add Stealthy Fingerprint Protection extension (always first)
-      const { app } = require('electron');
-      const stealthyFingerprintExt = app.isPackaged
-        ? path.join(process.resourcesPath, 'extension', 'stealthy_fingerprint')
-        : path.join(__dirname, '..', '..', 'extension', 'stealthy_fingerprint');
-      
-      if (fs.existsSync(stealthyFingerprintExt)) {
-        extensionsToLoad.push(stealthyFingerprintExt);
-        console.log('✓ Stealthy Fingerprint Protection enabled');
-      }
-
       // Add WebRTC leak protection extension
       const webrtcExtensionDir = generateWebRTCProtectionExtension(profile.id);
       extensionsToLoad.push(webrtcExtensionDir);
