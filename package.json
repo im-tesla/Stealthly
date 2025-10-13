@@ -1,6 +1,6 @@
 {
   "name": "stealthy",
-  "version": "0.1.5384",
+  "version": "0.1.5485",
   "description": "Stealthy, protect your online privacy with ease.",
   "main": "src/main/main.js",
   "scripts": {
