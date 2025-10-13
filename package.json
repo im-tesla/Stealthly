@@ -10,8 +10,6 @@
     "watch": "webpack --mode development --watch",
     "dev": "concurrently \"npm run watch\" \"wait-on dist/index.html && npm run start\"",
     "generate-icons": "node scripts/create-icon.js",
-    "download-brave": "node scripts/download-brave.js",
-    "postinstall": "node scripts/download-brave.js",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder --win"
   },
@@ -31,7 +29,6 @@
       "src/main/**/*",
       "package.json"
     ],
-    "afterPack": "scripts/after-pack.js",
     "extraResources": [
       {
         "from": "icons",
@@ -91,7 +88,6 @@
     "icon-gen": "^5.0.0",
     "postcss": "^8.4.35",
     "postcss-loader": "^8.2.0",
-    "rcedit": "^4.0.1",
     "style-loader": "^4.0.0",
     "tailwindcss": "^3.4.0",
     "wait-on": "^9.0.1",
@@ -109,9 +105,10 @@
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.1",
-  "lucide-react": "^0.545.0",
-  "react": "^19.2.0",
-  "react-dom": "^19.2.0",
-  "webpack-dev-server": "^5.2.2"
+    "lucide-react": "^0.545.0",
+    "patchright": "^1.56.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "webpack-dev-server": "^5.2.2"
   }
 }

@@ -15,14 +15,14 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   const [newProxy, setNewProxy] = useState({ 
     name: '', 
     address: '', 
-    type: 'SOCKS5',
+    type: 'HTTP',
     username: '',
     password: ''
   });
   const [editProxy, setEditProxy] = useState({ 
     name: '', 
     address: '', 
-    type: 'SOCKS5',
+    type: 'HTTP',
     username: '',
     password: ''
   });
@@ -84,7 +84,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
         const createdProxy = await window.api.proxies.create(proxyData);
         if (createdProxy) {
           setProxies([...proxies, createdProxy]);
-          setNewProxy({ name: '', address: '', type: 'SOCKS5', username: '', password: '' });
+          setNewProxy({ name: '', address: '', type: 'HTTP', username: '', password: '' });
           setIsDialogOpen(false);
           
           // Check the newly created proxy
@@ -140,7 +140,7 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
         const updatedProxy = await window.api.proxies.update(editingProxy.id, proxyData);
         if (updatedProxy) {
           setProxies(proxies.map(p => p.id === editingProxy.id ? updatedProxy : p));
-          setEditProxy({ name: '', address: '', type: 'SOCKS5', username: '', password: '' });
+          setEditProxy({ name: '', address: '', type: 'HTTP', username: '', password: '' });
           setEditingProxy(null);
           setIsEditDialogOpen(false);
           
@@ -254,14 +254,14 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                     }`}
                   >
                     <ToggleGroup.Item
-                      value="SOCKS5"
+                      value="HTTP"
                       className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                         darkMode 
                           ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
                           : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
                       }`}
                     >
-                      SOCKS5
+                      HTTP
                     </ToggleGroup.Item>
                     <ToggleGroup.Item
                       value="HTTPS"
@@ -272,16 +272,6 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                       }`}
                     >
                       HTTPS
-                    </ToggleGroup.Item>
-                    <ToggleGroup.Item
-                      value="HTTP"
-                      className={`flex-1 px-4 py-2 text-sm rounded-md transition-all ${
-                        darkMode 
-                          ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
-                          : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
-                      }`}
-                    >
-                      HTTP
                     </ToggleGroup.Item>
                   </ToggleGroup.Root>
                 </div>
@@ -401,14 +391,14 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   }`}
                 >
                   <ToggleGroup.Item
-                    value="SOCKS5"
+                    value="HTTP"
                     className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
                       darkMode 
                         ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
                         : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
                     }`}
                   >
-                    SOCKS5
+                    HTTP
                   </ToggleGroup.Item>
                   <ToggleGroup.Item
                     value="HTTPS"
@@ -419,16 +409,6 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                     }`}
                   >
                     HTTPS
-                  </ToggleGroup.Item>
-                  <ToggleGroup.Item
-                    value="HTTP"
-                    className={`flex-1 px-4 py-2 text-sm rounded-md transition-all ${
-                      darkMode 
-                        ? 'text-zinc-400 data-[state=on]:bg-white data-[state=on]:text-black hover:text-white' 
-                        : 'text-zinc-600 data-[state=on]:bg-black data-[state=on]:text-white hover:text-black'
-                    }`}
-                  >
-                    HTTP
                   </ToggleGroup.Item>
                 </ToggleGroup.Root>
               </div>

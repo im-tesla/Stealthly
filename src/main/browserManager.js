@@ -1,13 +1,13 @@
-const { spawn } = require('child_process');
+const { chromium } = require('patchright');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const { generateProxyAuthExtension, cleanupProxyAuthExtension } = require('./proxyAuthExtension');
+const { app } = require('electron');
 const { generateWebRTCProtectionExtension, cleanupWebRTCProtectionExtension } = require('./webrtcProtection');
 
 class BrowserManager {
   constructor() {
-    this.activeBrowsers = new Map(); // profileId -> browser instance
+    this.activeBrowsers = new Map(); // profileId -> { context, page, webrtcExtensionDir, startTime }
     this.dataDir = path.join(os.homedir(), '.stealthy', 'profiles');
     
     // Ensure profiles directory exists
@@ -17,53 +17,20 @@ class BrowserManager {
   }
 
   /**
-   * Find Brave executable path
+   * Get bundled Chrome executable path
+   * In development: browsers/chrome-win/chrome.exe
+   * In production: resources/browsers/chrome-win/chrome.exe
    */
-  getBravePath() {
-    const platform = os.platform();
+  _getChromePath() {
+    const isDev = !app.isPackaged;
     
-    if (platform === 'win32') {
-      // In production, extraResources are in process.resourcesPath
-      // In development, they're relative to the project root
-      const { app } = require('electron');
-      const isPackaged = app.isPackaged;
-      
-      const possiblePaths = [];
-      
-      // Check for portable version bundled with app first
-      if (isPackaged) {
-        // Production: extraResources are in app.getPath('exe')/../resources/
-        possiblePaths.push(path.join(process.resourcesPath, 'browsers', 'brave-win64', 'brave.exe'));
-      } else {
-        // Development: relative to project root
-        possiblePaths.push(path.join(__dirname, '..', '..', 'browsers', 'brave-win64', 'brave.exe'));
-      }
-      
-      // Then check system installations as fallback
-      possiblePaths.push(
-        path.join(process.env.LOCALAPPDATA || '', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-        path.join(process.env.PROGRAMFILES || 'C:\\Program Files', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe'),
-        path.join(process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', 'BraveSoftware\\Brave-Browser\\Application\\brave.exe')
-      );
-      
-      for (const bravePath of possiblePaths) {
-        if (fs.existsSync(bravePath)) {
-          console.log('Using Brave browser:', bravePath);
-          return bravePath;
-        }
-      }
+    if (isDev) {
+      // Development: Use browsers folder in project root
+      return path.join(process.cwd(), 'browsers', 'chrome-win', 'chrome.exe');
+    } else {
+      // Production: Use bundled browsers in resources
+      return path.join(process.resourcesPath, 'browsers', 'chrome-win', 'chrome.exe');
     }
-    
-    console.error('Brave browser not found! Please install Brave from https://brave.com');
-    return null;
-  }
-
-  /**
-   * Check if Brave is available
-   */
-  isBraveAvailable() {
-    const bravePath = this.getBravePath();
-    return bravePath !== null;
   }
 
   /**
@@ -74,104 +41,114 @@ class BrowserManager {
   }
 
   /**
-   * Build proxy configuration and return URL + optional extension
+   * Check if bundled browser is available
    */
-  _buildProxyConfig(proxy, profileId) {
+  isBrowserAvailable() {
+    const chromePath = this._getChromePath();
+    return fs.existsSync(chromePath);
+  }
+
+  /**
+   * Build proxy configuration for Patchright
+   * Supports HTTP/HTTPS proxies with native authentication
+   */
+  _buildProxyConfig(proxy) {
     const proxyType = proxy.type.toLowerCase();
     const hasAuth = proxy.username && proxy.password;
     
-    // SOCKS proxies: Embed credentials in URL (extensions don't work)
-    if (proxyType === 'socks5' || proxyType === 'socks') {
-      const url = hasAuth
-        ? `socks5://${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@${proxy.host}:${proxy.port}`
-        : `socks5://${proxy.host}:${proxy.port}`;
-      
-      console.log(`Using SOCKS5 proxy${hasAuth ? ' with authentication' : ''}: socks5://${hasAuth ? `${proxy.username}:***@` : ''}${proxy.host}:${proxy.port}`);
-      return { url, extensionDir: null };
+    // Only HTTP/HTTPS proxies are supported
+    if (proxyType !== 'http' && proxyType !== 'https') {
+      throw new Error(`Unsupported proxy type: ${proxy.type}. Only HTTP and HTTPS proxies are supported.`);
     }
     
-    if (proxyType === 'socks4') {
-      const url = hasAuth
-        ? `socks4://${encodeURIComponent(proxy.username)}:${encodeURIComponent(proxy.password)}@${proxy.host}:${proxy.port}`
-        : `socks4://${proxy.host}:${proxy.port}`;
-      
-      console.log(`Using SOCKS4 proxy${hasAuth ? ' with authentication' : ''}`);
-      return { url, extensionDir: null };
-    }
-    
-    // HTTP/HTTPS proxies: Use extension for authentication
+    // HTTP/HTTPS proxies: Native authentication support! 🎉
     const protocol = proxyType === 'https' ? 'https' : 'http';
-    const url = `${protocol}://${proxy.host}:${proxy.port}`;
-    const extensionDir = hasAuth ? generateProxyAuthExtension(proxy, profileId) : null;
+    const server = `${protocol}://${proxy.host}:${proxy.port}`;
+    console.log(`Using ${protocol.toUpperCase()} proxy${hasAuth ? ' with native authentication' : ''}: ${server}`);
     
-    console.log(`Using ${protocol.toUpperCase()} proxy${hasAuth ? ' with extension-based auth' : ''}: ${url}`);
-    if (extensionDir) {
-      console.log(`✓ Proxy authentication extension loaded`);
-    }
-    
-    return { url, extensionDir };
+    return {
+      server,
+      username: hasAuth ? proxy.username : undefined,
+      password: hasAuth ? proxy.password : undefined
+    };
   }
 
   /**
-   * Build base browser arguments
+   * Generate consistent viewport for a profile
+   * Each profile gets a unique viewport based on its viewportSeed, ensuring consistency across launches
+   * When profile data is cleared, the viewportSeed is regenerated, giving a new viewport
    */
-  _buildBrowserArgs(profileDir, startupUrl = null) {
-    // Get system language (e.g., 'en-US', 'es-ES', 'de-DE')
-    const systemLang = require('electron').app.getLocale() || 'en-US';
-    
-    // Use custom startup URL or default
-    const url = startupUrl || 'about:blank';
-
-    return [
-      `--user-data-dir=${profileDir}`,
-      '--no-first-run',
-      '--no-default-browser-check',
-      `--lang=${systemLang}`,
-      '--disable-sync',
-      '--disable-background-networking',
-      '--disable-default-apps',
-      '--disable-component-update',
-      '--disable-domain-reliability',
-      '--disable-features=OptimizationHints,TranslateUI,InterestCohort',
-      '--password-store=basic',
-      `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
-      '--force-webrtc-ip-handling-policy=default_public_interface_only',
-      '--enforce-webrtc-ip-permission-check',
-      '--dns-prefetch-disable',
-      '--dns-over-https-server=https://cloudflare-dns.com/dns-query',
-      '--enable-features=DnsOverHttps',
-      '--no-referrers',
-      '--safebrowsing-disable-auto-update',
-      '--disable-breakpad',
-      url
+  _generateViewport(viewportSeed) {
+    // Common screen resolutions with their ratios
+    const screenSizes = [
+      // 16:9 aspect ratio (most common)
+      { width: 1920, height: 1080, name: 'Full HD' },
+      { width: 1600, height: 900, name: 'HD+' },
+      { width: 1366, height: 768, name: 'HD' },
+      { width: 1280, height: 720, name: 'HD Ready' },
+      
+      // 16:10 aspect ratio
+      { width: 1920, height: 1200, name: 'WUXGA' },
+      { width: 1680, height: 1050, name: 'WSXGA+' },
+      { width: 1440, height: 900, name: 'WXGA+' },
+      { width: 2560, height: 1600, name: 'WQXGA' },
+      
+      // 4:3 aspect ratio (older monitors)
+      { width: 1024, height: 768, name: 'XGA' },
+      { width: 1280, height: 1024, name: 'SXGA' },
+      
+      // Laptop sizes
+      { width: 1536, height: 864, name: 'Laptop HD+' },
+      { width: 1400, height: 1050, name: 'SXGA+' },
     ];
+
+    // Use viewportSeed for consistent random selection
+    const seed = viewportSeed || Date.now(); // Fallback for old profiles without viewportSeed
+    const sizeIndex = seed % screenSizes.length;
+    const baseSize = screenSizes[sizeIndex];
+    
+    // Add small random variations (±0-20px) for uniqueness, but keep it deterministic per seed
+    const widthVariation = (seed * 7) % 21; // 0-20
+    const heightVariation = (seed * 11) % 21; // 0-20
+
+    return {
+      width: baseSize.width + widthVariation,
+      height: baseSize.height + heightVariation,
+      name: baseSize.name
+    };
   }
 
   /**
-   * Setup process event handlers
+   * Build launch arguments for Patchright context
    */
-  _setupProcessHandlers(browserProcess, profile, extensionDir, webrtcExtensionDir) {
-    browserProcess.on('exit', (code) => {
-      console.log(`Browser closed for profile: ${profile.name} (exit code: ${code})`);
-      
-      if (extensionDir) {
-        cleanupProxyAuthExtension(profile.id);
-      }
-      
-      if (webrtcExtensionDir) {
-        cleanupWebRTCProtectionExtension(profile.id);
-      }
-      
-      this.activeBrowsers.delete(profile.id);
-      
-      const db = require('./database');
-      db.updateProfile(profile.id, { status: 'inactive' });
-    });
+  _buildLaunchArgs(profile) {
+    // Generate unique but consistent viewport for this profile using its viewportSeed
+    const viewport = this._generateViewport(profile.viewportSeed || profile.id);
+    console.log(`Viewport for ${profile.name}: ${viewport.width}x${viewport.height} (${viewport.name})`);
 
-    browserProcess.on('error', (err) => {
-      console.error(`Browser process error for profile ${profile.name}:`, err);
-      this.activeBrowsers.delete(profile.id);
-    });
+    return {
+      viewport: {
+        width: viewport.width,
+        height: viewport.height
+      },
+      args: [
+        '--disable-blink-features=AutomationControlled',
+        '--no-first-run',
+        '--no-default-browser-check',
+        '--disable-sync',
+        '--disable-background-networking',
+        '--disable-default-apps',
+        '--disable-component-update',
+        '--disable-domain-reliability',
+        '--disable-features=OptimizationHints,TranslateUI,InterestCohort',
+        '--password-store=basic',
+        `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
+        '--dns-prefetch-disable',
+        '--no-referrers',
+        '--safebrowsing-disable-auto-update',
+        '--disable-breakpad'
+      ]
+    };
   }
 
   /**
@@ -182,7 +159,7 @@ class BrowserManager {
       // Check if already running
       if (this.activeBrowsers.has(profile.id)) {
         const existing = this.activeBrowsers.get(profile.id);
-        if (existing.process && !existing.process.killed) {
+        if (existing.context && existing.context.pages) {
           console.log(`Browser already running for profile: ${profile.name}`);
           return { success: true, message: 'Browser already running', profileId: profile.id };
         }
@@ -195,10 +172,8 @@ class BrowserManager {
         fs.mkdirSync(profileDir, { recursive: true });
       }
 
-      // Build launch arguments
-      const bravePath = this.getBravePath();
-      const braveArgs = this._buildBrowserArgs(profileDir, profile.startupUrl);
-      let extensionDir = null;
+      // Build launch configuration
+      const launchConfig = this._buildLaunchArgs(profile);
       const extensionsToLoad = [];
 
       // Add WebRTC leak protection extension
@@ -220,43 +195,70 @@ class BrowserManager {
       }
 
       // Add proxy configuration
+      let proxyConfig = null;
       if (proxy) {
-        const proxyConfig = this._buildProxyConfig(proxy, profile.id);
-        braveArgs.push(`--proxy-server=${proxyConfig.url}`);
-        extensionDir = proxyConfig.extensionDir;
-        
-        if (extensionDir) {
-          extensionsToLoad.push(extensionDir);
+        proxyConfig = this._buildProxyConfig(proxy);
+      }
+
+      // Prepare launch options
+      const launchOptions = {
+        headless: false,
+        executablePath: this._getChromePath(), // Use bundled Chrome
+        viewport: launchConfig.viewport,
+        args: [
+          ...launchConfig.args,
+          ...(extensionsToLoad.length > 0 ? [`--load-extension=${extensionsToLoad.join(',')}`] : [])
+        ]
+      };
+
+      // Add proxy if configured (native support in Patchright!)
+      if (proxyConfig) {
+        launchOptions.proxy = proxyConfig;
+      }
+
+      // Launch browser with persistent context
+      console.log(`Launching browser for profile: ${profile.name}`);
+      console.log(`Profile directory: ${profileDir}`);
+      
+      const context = await chromium.launchPersistentContext(profileDir, launchOptions);
+
+      // Get or create a page
+      const pages = context.pages();
+      const page = pages.length > 0 ? pages[0] : await context.newPage();
+
+      // Navigate to startup URL if specified
+      if (profile.startupUrl && profile.startupUrl !== 'about:blank') {
+        try {
+          await page.goto(profile.startupUrl);
+        } catch (navError) {
+          console.warn(`Could not navigate to startup URL: ${navError.message}`);
         }
       }
 
-      // Load all extensions
-      if (extensionsToLoad.length > 0) {
-        braveArgs.push(`--load-extension=${extensionsToLoad.join(',')}`);
-      }
-
-      // Launch browser
-      console.log(`Launching Brave browser for profile: ${profile.name}`);
-      console.log(`Launch args:`, braveArgs.join(' '));
-      
-      const browserProcess = spawn(bravePath, braveArgs, {
-        detached: false,
-        stdio: 'ignore'
+      // Setup cleanup handlers
+      context.on('close', () => {
+        console.log(`Browser context closed for profile: ${profile.name}`);
+        
+        if (webrtcExtensionDir) {
+          cleanupWebRTCProtectionExtension(profile.id);
+        }
+        
+        this.activeBrowsers.delete(profile.id);
+        
+        const db = require('./database');
+        db.updateProfile(profile.id, { status: 'inactive' });
       });
-
-      // Setup event handlers
-      this._setupProcessHandlers(browserProcess, profile, extensionDir, webrtcExtensionDir);
 
       // Store browser instance
       this.activeBrowsers.set(profile.id, { 
-        process: browserProcess,
+        context,
+        page,
         profileDir,
-        extensionDir,
         webrtcExtensionDir,
         startTime: new Date()
       });
 
-      console.log(`✓ Brave browser launched successfully for profile: ${profile.name}`);
+      console.log(`✓ Browser launched successfully for profile: ${profile.name}`);
       return { 
         success: true, 
         message: 'Browser launched successfully', 
@@ -284,22 +286,14 @@ class BrowserManager {
         return { success: false, message: 'Browser not running for this profile' };
       }
 
-      const { process: browserProcess, extensionDir, webrtcExtensionDir } = browserData;
+      const { context, webrtcExtensionDir } = browserData;
       
-      // Kill browser process
-      if (browserProcess && !browserProcess.killed) {
-        if (os.platform() === 'win32') {
-          spawn('taskkill', ['/pid', browserProcess.pid, '/t', '/f']);
-        } else {
-          browserProcess.kill('SIGTERM');
-        }
+      // Close browser context
+      if (context) {
+        await context.close();
       }
       
       // Cleanup extensions if they exist
-      if (extensionDir) {
-        cleanupProxyAuthExtension(profileId);
-      }
-      
       if (webrtcExtensionDir) {
         cleanupWebRTCProtectionExtension(profileId);
       }
@@ -322,8 +316,8 @@ class BrowserManager {
     if (!this.activeBrowsers.has(profileId)) {
       return false;
     }
-    const { process: browserProcess } = this.activeBrowsers.get(profileId);
-    return browserProcess && !browserProcess.killed;
+    const { context } = this.activeBrowsers.get(profileId);
+    return context && context.pages;
   }
 
   /**
@@ -332,7 +326,7 @@ class BrowserManager {
   getActiveSessions() {
     const sessions = [];
     for (const [profileId, data] of this.activeBrowsers.entries()) {
-      if (data.process && !data.process.killed) {
+      if (data.context && data.context.pages) {
         sessions.push({
           profileId,
           isConnected: true,

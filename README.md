@@ -4,10 +4,11 @@
 
 **Protect your online privacy with ease.**
 
-*A modern, undetectable browser profile manager built with Electron, React, and cutting-edge privacy technology.*
+*A modern, undetectable browser profile manager built with Electron, React, and Patchright.*
 
 [![Electron](https://img.shields.io/badge/Electron-30.0.0-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://www.electronjs.org/)
 [![React](https://img.shields.io/badge/React-19.2.0-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://reactjs.org/)
+[![Patchright](https://img.shields.io/badge/Patchright-1.56.0-00D1B2?style=for-the-badge&logo=playwright&logoColor=white)](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
 ![Stealthly Banner](https://via.placeholder.com/1200x400/18181b/ffffff?text=Stealthly+-+Privacy+First+Browser+Management)
@@ -23,19 +24,21 @@
 - Each profile maintains separate cookies, cache, and storage
 - Launch profiles independently without interference
 - **Maximum Privacy Protection**: Advanced fingerprint protection enabled for all profiles
-- **Automatic Brave Setup**: Browser installed automatically during setup
+- **Powered by Patchright**: Undetectable browser automation with anti-bot patches
 
 ### 🌐 **Proxy Integration**
-- Support for SOCKS5, SOCKS4, HTTP, and HTTPS proxies
-- Easy proxy configuration per profile
-- Real-time proxy status monitoring
-- Automatic proxy cascade on deletion
+- **HTTP/HTTPS Proxy Support**: Full authentication for HTTP and HTTPS proxies
+- **Native Authentication**: No extensions needed - built into Patchright
+- **Simple Configuration**: Easy proxy setup per profile
+- **Real-time Monitoring**: Check proxy status at a glance
+- **Note**: SOCKS proxies are not supported due to Chromium limitations
 
 ### 🔒 **Military-Grade Security**
 - **AES-256-CBC Encryption**: All data encrypted at rest
 - Secure key derivation using scrypt
 - Encrypted backups with `.encrypted` extension
 - Local-only storage - never leaves your device
+- **Anti-Detection Technology**: Patchright's stealth patches bypass bot detection
 
 ### 🎨 **Modern Interface**
 - Beautiful dark/light mode with instant switching
@@ -64,8 +67,8 @@
 
 - **Node.js** v16 or higher
 - **npm** or **yarn** package manager
-- **Windows 10/11** (64-bit) - *Currently Windows-only*
-- **Note**: Brave Browser portable is bundled with the app - no separate installation needed!
+- **Windows 10/11** (64-bit), macOS, or Linux
+- **Note**: Chromium is automatically downloaded by Patchright on first launch (~170MB)
 
 ### Installation
 
@@ -76,26 +79,19 @@ git clone https://github.com/im-tesla/Stealthly.git
 # Navigate to project directory
 cd Stealthly
 
-# Install dependencies (will automatically download Brave Browser portable)
+# Install dependencies (includes Patchright)
 npm install
 
 # Start development server
 npm run dev
 ```
 
-### Manual Brave Browser Download (if needed)
-
-```bash
-# Download Brave Browser portable if automatic download failed
-npm run download-brave
-```
-
-**Note**: The portable Brave browser is automatically downloaded during `npm install` and bundled with the final app. No admin rights required!
+**Note**: On first profile launch, Patchright will automatically download Chromium (~170MB). This only happens once!
 
 ### Building for Production
 
 ```bash
-# Build the complete installer with bundled Brave Browser
+# Build the complete installer
 npm run dist
 
 # The installer will be created in the release/ directory
@@ -104,10 +100,10 @@ npm run dist
 
 **What's included in the installer:**
 - ✅ Stealthly application
-- ✅ Brave Browser portable (no separate installation needed)
+- ✅ Patchright (Chromium downloaded on first launch)
 - ✅ All dependencies and resources
-- ✅ Works offline after installation
-- ✅ No admin rights required for Brave
+- ✅ Cross-platform support
+- ✅ Anti-detection technology built-in
 
 ---
 
@@ -131,8 +127,12 @@ All profiles automatically include maximum privacy protection with advanced fing
 3. Configure your proxy:
    - **Name**: Friendly name for identification
    - **Address**: Format as `host:port` (e.g., `192.168.1.1:8080`)
-   - **Type**: Choose SOCKS5, SOCKS4, HTTP, or HTTPS
+   - **Type**: Choose HTTP or HTTPS _(Note: SOCKS proxies not supported)_
+   - **Username**: Authentication username (optional)
+   - **Password**: Authentication password (optional)
 4. Click **"Add Proxy"**
+
+**Important**: SOCKS4/SOCKS5 proxies are not supported due to Chromium's lack of native authentication support for SOCKS protocols.
 
 ### Launching a Profile
 
@@ -160,6 +160,7 @@ All profiles automatically include maximum privacy protection with advanced fing
 |------------|---------|---------|
 | **Electron** | 30.0.0 | Desktop application framework |
 | **React** | 19.2.0 | UI library with automatic JSX transform |
+| **Patchright** | 1.56.0 | Patched Playwright for undetectable automation |
 | **Radix UI** | Latest | Accessible, unstyled components |
 | **Tailwind CSS** | 3.4.0 | Utility-first CSS framework |
 | **Webpack** | 5.102.1 | Module bundler |
@@ -186,7 +187,7 @@ Stealthly/
 │   │   ├── preload.js           # Preload script with contextBridge
 │   │   ├── ipcHandlers.js       # IPC communication handlers
 │   │   ├── database.js          # Encrypted database operations
-│   │   └── browserManager.js   # Browser launch & profile management
+│   │   └── browserManager.js   # Patchright browser management
 │   ├── renderer/
 │   │   ├── index.html           # HTML entry point
 │   │   ├── index.jsx            # React entry point
@@ -200,17 +201,13 @@ Stealthly/
 │   │       └── input.css        # Tailwind & custom styles
 │   └── build/
 │       └── output.css           # Compiled CSS
-├── browsers/
-│   ├── brave-win64/             # Brave Browser portable (auto-downloaded)
-│   │   └── brave.exe            # Brave executable
-│   ├── .gitkeep                 # Ensures directory is tracked
-│   └── README.md                # Browser setup documentation
+├── examples/
+│   └── patchright.js            # Patchright usage example
 ├── dist/                        # Webpack build output
 ├── release/                     # Production builds
 ├── icons/                       # App icons & favicons
 ├── scripts/
-│   ├── build-css.js            # CSS build script
-│   └── download-brave.js       # Brave Browser download script
+│   └── build-css.js            # CSS build script
 ├── package.json                 # Dependencies & scripts
 ├── webpack.config.js            # Webpack configuration
 ├── tailwind.config.js           # Tailwind CSS config
@@ -338,7 +335,9 @@ The app uses `electron-reloader` for automatic restarts during development. Chan
   name: "US Proxy 1",
   host: "192.168.1.1",
   port: "8080",
-  type: "SOCKS5",              // "SOCKS5" | "SOCKS4" | "HTTP" | "HTTPS"
+  type: "HTTP",                // "HTTP" | "HTTPS"
+  username: "user",            // Optional
+  password: "pass",            // Optional
   status: "active"             // "active" | "inactive"
 }
 ```
@@ -377,25 +376,25 @@ Contributions are welcome! Please follow these steps:
 
 ## 🐛 Known Issues
 
-- [ ] Profile launching currently logs to console (not yet implemented)
-- [ ] Proxy editing not yet implemented (delete and recreate workaround)
-- [ ] Activity log limited to 100 entries (automatic trimming)
+- None currently! The migration to Patchright resolved previous browser detection issues.
 
 ---
 
 ## 📋 Roadmap
 
-### Version 1.1.0
-- [ ] Actual browser session launching
-- [ ] Browser fingerprint randomization
-- [ ] WebRTC leak protection
-- [ ] Cookie import/export per profile
+### Version 1.1.0 (Current)
+- [x] Patchright integration for undetectable automation
+- [x] Native proxy authentication support
+- [x] Unique fingerprinting per profile
+- [x] WebRTC leak protection
+- [x] Cross-platform support
 
 ### Version 1.2.0
 - [ ] Profile templates
 - [ ] Bulk operations (multi-select)
 - [ ] Advanced proxy testing
 - [ ] Profile groups/tags
+- [ ] Cookie import/export per profile
 
 ### Version 2.0.0
 - [ ] Cloud backup sync (encrypted)
@@ -424,6 +423,7 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 - **Electron Team** - For the amazing desktop framework
 - **React Team** - For the powerful UI library
+- **Patchright Team** - For the undetectable browser automation
 - **Radix UI** - For accessible component primitives
 - **Tailwind Labs** - For the utility-first CSS framework
 - **Lucide Icons** - For beautiful, consistent icons

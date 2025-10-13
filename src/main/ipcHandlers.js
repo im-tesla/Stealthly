@@ -44,6 +44,12 @@ function registerIpcHandlers(ipcMain) {
   });
 
   ipcMain.handle('profiles:delete', async (event, id) => {
+    // Check if profile is currently active and close it first
+    if (browserManager.isProfileActive(id)) {
+      console.log(`Closing active browser for profile ${id} before deletion...`);
+      await browserManager.closeProfile(id);
+    }
+    
     return deleteProfile(id);
   });
 

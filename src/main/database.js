@@ -119,13 +119,15 @@ function getProfile(id) {
 
 function createProfile(profileData) {
   const profiles = readData(profilesDbPath);
+  const timestamp = Date.now();
   const newProfile = {
-    id: Date.now(),
+    id: timestamp,
     name: profileData.name,
     proxyId: profileData.proxyId || null,
     status: 'idle',
     createdAt: new Date().toISOString(),
     lastUsed: null,
+    viewportSeed: timestamp, // Unique seed for viewport generation
     ...profileData
   };
   profiles.push(newProfile);
@@ -170,7 +172,24 @@ function deleteProfile(id) {
   const filtered = profiles.filter(p => p.id !== id);
   if (filtered.length === profiles.length) return { success: false, error: 'Profile not found' };
   
+  // Delete profile from database
   const result = writeData(profilesDbPath, filtered);
+  
+  // Delete physical profile directory
+  if (result.success) {
+    try {
+      const os = require('os');
+      const profileDir = path.join(os.homedir(), '.stealthy', 'profiles', `profile_${id}`);
+      
+      if (fs.existsSync(profileDir)) {
+        fs.rmSync(profileDir, { recursive: true, force: true });
+        console.log(`✓ Deleted profile directory: ${profileDir}`);
+      }
+    } catch (error) {
+      console.error(`Error deleting profile directory for profile ${id}:`, error);
+      // Don't fail the whole operation if directory deletion fails
+    }
+  }
   
   // Log activity
   if (result.success && profile) {
@@ -212,6 +231,15 @@ function clearProfileCookies(id) {
       }
     }
     
+    // Regenerate viewport seed so the profile gets a new viewport on next launch
+    const profiles = readData(profilesDbPath);
+    const profileIndex = profiles.findIndex(p => p.id === id);
+    if (profileIndex !== -1) {
+      profiles[profileIndex].viewportSeed = Date.now();
+      writeData(profilesDbPath, profiles);
+      console.log(`✓ Regenerated viewport seed for profile ${id}`);
+    }
+    
     console.log(`✓ Cleared all data for profile ${id}`);
     return { success: true, message: 'Profile data cleared successfully' };
   } catch (error) {
@@ -230,17 +258,19 @@ function duplicateProfile(id, newProfileData) {
   
   // Create a new profile with data from source profile
   // NOTE: We do NOT copy the user directory - only the configuration
+  const timestamp = Date.now();
   const duplicatedProfile = {
-    id: Date.now(),
+    id: timestamp,
     name: newProfileData.name,
     proxyId: newProfileData.proxyId !== undefined ? newProfileData.proxyId : sourceProfile.proxyId,
     startupUrl: newProfileData.startupUrl !== undefined ? newProfileData.startupUrl : sourceProfile.startupUrl,
     status: 'inactive',
     createdAt: new Date().toISOString(),
     lastUsed: null,
-    // Copy any other custom properties from the source profile (except id, createdAt, lastUsed, status)
+    viewportSeed: timestamp, // New unique viewport seed for duplicated profile
+    // Copy any other custom properties from the source profile (except id, createdAt, lastUsed, status, viewportSeed)
     ...(Object.keys(sourceProfile).reduce((acc, key) => {
-      if (!['id', 'name', 'proxyId', 'startupUrl', 'status', 'createdAt', 'lastUsed'].includes(key)) {
+      if (!['id', 'name', 'proxyId', 'startupUrl', 'status', 'createdAt', 'lastUsed', 'viewportSeed'].includes(key)) {
         acc[key] = sourceProfile[key];
       }
       return acc;

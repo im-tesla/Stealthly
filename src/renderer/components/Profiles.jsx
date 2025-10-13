@@ -28,6 +28,23 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
     startupUrl: '',
   });
 
+  // Helper function to normalize URLs - adds https:// if no protocol is specified
+  const normalizeUrl = (url) => {
+    if (!url || url.trim() === '' || url === 'about:blank') {
+      return url;
+    }
+    
+    const trimmedUrl = url.trim();
+    
+    // If it already has a protocol, return as-is
+    if (trimmedUrl.match(/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//)) {
+      return trimmedUrl;
+    }
+    
+    // Add https:// prefix
+    return `https://${trimmedUrl}`;
+  };
+
   // Sync active sessions with profile statuses
   useEffect(() => {
     const syncActiveSessions = async () => {
@@ -55,7 +72,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const profileData = {
         name: newProfile.name,
         proxyId: newProfile.proxyId,
-        startupUrl: newProfile.startupUrl.trim() || 'about:blank',
+        startupUrl: normalizeUrl(newProfile.startupUrl.trim()) || 'about:blank',
         status: 'inactive',
       };
       
@@ -85,7 +102,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const updates = {
         name: editingProfile.name,
         proxyId: editingProfile.proxyId,
-        startupUrl: editingProfile.startupUrl?.trim() || 'about:blank',
+        startupUrl: normalizeUrl(editingProfile.startupUrl?.trim()) || 'about:blank',
       };
       
       const updatedProfile = await window.api.profiles.update(editingProfile.id, updates);
@@ -138,7 +155,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       const newProfileData = {
         name: duplicateProfile.name,
         proxyId: duplicateProfile.proxyId,
-        startupUrl: duplicateProfile.startupUrl.trim() || 'about:blank',
+        startupUrl: normalizeUrl(duplicateProfile.startupUrl.trim()) || 'about:blank',
       };
       
       const createdProfile = await window.api.profiles.duplicate(profileToDuplicate.id, newProfileData);
@@ -407,7 +424,14 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                 <span>Start URL:</span>
                 <span className="truncate ml-2 max-w-[180px]" title={profile.startupUrl || 'about:blank'}>
                   {profile.startupUrl && profile.startupUrl !== 'about:blank' 
-                    ? new URL(profile.startupUrl).hostname 
+                    ? (() => {
+                        try {
+                          return new URL(profile.startupUrl).hostname;
+                        } catch {
+                          // If URL parsing fails, just show the raw value
+                          return profile.startupUrl;
+                        }
+                      })()
                     : 'about:blank'}
                 </span>
               </div>
