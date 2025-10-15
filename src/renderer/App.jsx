@@ -126,6 +126,7 @@ const App = () => {
                 <Proxies 
                   proxies={proxies} 
                   setProxies={setProxies}
+                  profiles={profiles}
                   reloadProfiles={reloadProfiles}
                   darkMode={darkMode} 
                 />

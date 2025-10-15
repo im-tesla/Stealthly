@@ -5,7 +5,7 @@ import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { Plus, MoreVertical, Trash2, Edit, X, CheckCircle, XCircle, RefreshCw, Copy } from 'lucide-react';
 
-const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
+const Proxies = ({ proxies, setProxies, profiles, reloadProfiles, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -31,6 +31,23 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
   useEffect(() => {
     checkAllProxies();
   }, []);
+
+  // Count how many profiles are using each proxy
+  const getProxyUsageCount = (proxyId) => {
+    if (!profiles) {
+      console.log('Profiles not available in Proxies component');
+      return 0;
+    }
+    const count = profiles.filter(profile => profile.proxyId === proxyId).length;
+    console.log(`Proxy ${proxyId} usage count:`, count, 'from profiles:', profiles.length);
+    return count;
+  };
+
+  // Get profiles using this proxy
+  const getProfilesUsingProxy = (proxyId) => {
+    if (!profiles) return [];
+    return profiles.filter(profile => profile.proxyId === proxyId);
+  };
 
   const checkProxy = async (proxy) => {
     setCheckingProxies(prev => new Set(prev).add(proxy.id));
@@ -504,6 +521,32 @@ const Proxies = ({ proxies, setProxies, reloadProfiles, darkMode }) => {
                   }`}>
                     {proxy.type}
                   </div>
+                  {(() => {
+                    const usageCount = getProxyUsageCount(proxy.id);
+                    const profilesUsing = getProfilesUsingProxy(proxy.id);
+                    return (
+                      <div 
+                        className={`px-3 py-1 rounded-full text-xs flex items-center space-x-1 cursor-help ${
+                          usageCount > 0 
+                            ? darkMode 
+                              ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' 
+                              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                            : darkMode 
+                              ? 'bg-zinc-800 text-zinc-500' 
+                              : 'bg-zinc-100 text-zinc-500'
+                        }`}
+                        title={usageCount > 0 ? `Used by: ${profilesUsing.map(p => p.name).join(', ')}` : 'Not used by any profile'}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                          <circle cx="9" cy="7" r="4"></circle>
+                          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <span>{usageCount} {usageCount === 1 ? 'profile' : 'profiles'}</span>
+                      </div>
+                    );
+                  })()}
                   {proxy.username && (
                     <div className={`px-3 py-1 rounded-full text-xs flex items-center space-x-1 ${
                       darkMode ? 'bg-blue-950 text-blue-400 border border-blue-900' : 'bg-blue-50 text-blue-600 border border-blue-200'

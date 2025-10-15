@@ -474,7 +474,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
             onDragLeave={handleDragLeave}
             onDrop={(e) => handleDrop(e, profile)}
             onDragEnd={handleDragEnd}
-            className={`border rounded-xl p-6 transition-smooth cursor-move select-none ${
+            className={`border rounded-xl p-6 transition-smooth cursor-move select-none flex flex-col ${
               draggedProfile?.id === profile.id ? 'opacity-50' : ''
             } ${
               dragOverProfile?.id === profile.id && draggedProfile?.id !== profile.id 
@@ -487,9 +487,14 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
             }`}
           >
             <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center space-x-2 mb-1">
-                  <h3 className="text-lg font-light">{profile.name}</h3>
+                  <h3 
+                    className="text-lg font-light truncate max-w-full" 
+                    title={profile.name}
+                  >
+                    {profile.name}
+                  </h3>
                 </div>
                 <div className="flex items-center space-x-2">
                   <div
@@ -500,7 +505,7 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                   <span className={`text-xs capitalize ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{profile.status}</span>
                 </div>
               </div>
-              <div className={`p-1 cursor-grab active:cursor-grabbing opacity-40 hover:opacity-70 transition-opacity ${
+              <div className={`p-1 cursor-grab active:cursor-grabbing opacity-40 hover:opacity-70 transition-opacity flex-shrink-0 ${
                 darkMode ? 'text-zinc-500' : 'text-zinc-400'
               }`}>
                 <GripVertical size={18} />
@@ -509,11 +514,13 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
             <div className="space-y-2 mb-4 text-sm">
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Proxy:</span>
-                <span>{getProxyName(profile.proxyId)}</span>
+                <span className="truncate ml-2 max-w-[120px]" title={getProxyName(profile.proxyId)}>
+                  {getProxyName(profile.proxyId)}
+                </span>
               </div>
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Start URL:</span>
-                <span className="truncate ml-2 max-w-[180px]" title={profile.startupUrl || 'about:blank'}>
+                <span className="truncate ml-2 max-w-[120px]" title={profile.startupUrl || 'about:blank'}>
                   {profile.startupUrl && profile.startupUrl !== 'about:blank' 
                     ? (() => {
                         try {
@@ -528,7 +535,9 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
               </div>
               <div className={`flex justify-between ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>
                 <span>Created:</span>
-                <span>{formatDate(profile.createdAt)}</span>
+                <span className="truncate ml-2 max-w-[120px]" title={formatDate(profile.createdAt)}>
+                  {formatDate(profile.createdAt)}
+                </span>
               </div>
             </div>
             <div className="flex space-x-2">

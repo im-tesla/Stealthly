@@ -1,6 +1,6 @@
 {
   "name": "stealthy",
-  "version": "0.1.5485",
+  "version": "0.1.8299",
   "description": "Stealthy, protect your online privacy with ease.",
   "main": "src/main/main.js",
   "scripts": {
@@ -71,7 +71,8 @@
       "installerIcon": "icons/icon.ico",
       "uninstallerIcon": "icons/icon.ico",
       "installerHeaderIcon": "icons/icon.ico"
-    }
+    },
+    "afterPack": "scripts/after-pack.js"
   },
   "devDependencies": {
     "@babel/core": "^7.28.4",
@@ -88,6 +89,7 @@
     "icon-gen": "^5.0.0",
     "postcss": "^8.4.35",
     "postcss-loader": "^8.2.0",
+    "rcedit": "^4.0.1",
     "style-loader": "^4.0.0",
     "tailwindcss": "^3.4.0",
     "wait-on": "^9.0.1",
