@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id) => ipcRenderer.invoke('profiles:delete', id),
     duplicate: (id, newProfileData) => ipcRenderer.invoke('profiles:duplicate', id, newProfileData),
     clearCookies: (id) => ipcRenderer.invoke('profiles:clearCookies', id),
+    reorder: (newOrderArray) => ipcRenderer.invoke('profiles:reorder', newOrderArray),
     launch: (profileId) => ipcRenderer.invoke('profiles:launch', profileId),
     close: (profileId) => ipcRenderer.invoke('profiles:close', profileId),
     getActiveSessions: () => ipcRenderer.invoke('profiles:getActiveSessions'),

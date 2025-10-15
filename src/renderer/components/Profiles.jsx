@@ -3,7 +3,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import * as AlertDialog from '@radix-ui/react-alert-dialog';
 import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
-import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie, Square, Copy } from 'lucide-react';
+import { Plus, Play, Trash2, Edit, X, Shield, ChevronDown, Check, Cookie, Square, Copy, GripVertical } from 'lucide-react';
 
 const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -17,6 +17,8 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
   const [profileToDuplicate, setProfileToDuplicate] = useState(null);
   const [editingProfile, setEditingProfile] = useState(null);
   const [launchingProfile, setLaunchingProfile] = useState(null);
+  const [draggedProfile, setDraggedProfile] = useState(null);
+  const [dragOverProfile, setDragOverProfile] = useState(null);
   const [newProfile, setNewProfile] = useState({
     name: '',
     proxyId: null,
@@ -236,12 +238,84 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
     return date.toLocaleDateString();
   };
 
+  // Sort profiles by order field (fallback to creation time if no order)
+  const sortedProfiles = [...profiles].sort((a, b) => {
+    const orderA = a.order || 0;
+    const orderB = b.order || 0;
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+  });
+
+  // Drag and drop handlers
+  const handleDragStart = (e, profile) => {
+    setDraggedProfile(profile);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, profile) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDragOverProfile(profile);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverProfile(null);
+  };
+
+  const handleDrop = async (e, targetProfile) => {
+    e.preventDefault();
+    
+    if (!draggedProfile || draggedProfile.id === targetProfile.id) {
+      setDraggedProfile(null);
+      setDragOverProfile(null);
+      return;
+    }
+
+    // Create new order based on drag and drop
+    const newProfiles = [...sortedProfiles];
+    const draggedIndex = newProfiles.findIndex(p => p.id === draggedProfile.id);
+    const targetIndex = newProfiles.findIndex(p => p.id === targetProfile.id);
+
+    // Remove dragged profile and insert at target position
+    const [movedProfile] = newProfiles.splice(draggedIndex, 1);
+    newProfiles.splice(targetIndex, 0, movedProfile);
+
+    // Update local state immediately for smooth UX
+    setProfiles(newProfiles);
+
+    // Send new order to backend
+    const newOrderArray = newProfiles.map(p => p.id);
+    try {
+      const result = await window.api.profiles.reorder(newOrderArray);
+      if (result.success) {
+        // Refresh profiles to get updated order from backend
+        const updatedProfiles = await window.api.profiles.getAll();
+        setProfiles(updatedProfiles);
+      }
+    } catch (error) {
+      console.error('Failed to reorder profiles:', error);
+      // Revert to original order on error
+      const originalProfiles = await window.api.profiles.getAll();
+      setProfiles(originalProfiles);
+    }
+
+    setDraggedProfile(null);
+    setDragOverProfile(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedProfile(null);
+    setDragOverProfile(null);
+  };
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-semibold mb-2 tracking-tight">Profiles</h1>
-          <p className={`text-base font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>Manage your browser profiles</p>
+          <p className={`text-base font-medium ${darkMode ? 'text-zinc-400' : 'text-zinc-600'}`}>
+            Manage your browser profiles • Drag & drop to reorder
+          </p>
         </div>
         <Dialog.Root open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <Dialog.Trigger asChild>
@@ -391,13 +465,25 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {profiles.map((profile) => (
+        {sortedProfiles.map((profile) => (
           <div
             key={profile.id}
-            className={`border rounded-xl p-6 transition-smooth card-hover ${
-              darkMode 
-                ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' 
-                : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
+            draggable
+            onDragStart={(e) => handleDragStart(e, profile)}
+            onDragOver={(e) => handleDragOver(e, profile)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, profile)}
+            onDragEnd={handleDragEnd}
+            className={`border rounded-xl p-6 transition-smooth cursor-move select-none ${
+              draggedProfile?.id === profile.id ? 'opacity-50' : ''
+            } ${
+              dragOverProfile?.id === profile.id && draggedProfile?.id !== profile.id 
+                ? darkMode 
+                  ? 'border-blue-400 bg-blue-900/20' 
+                  : 'border-blue-400 bg-blue-50'
+                : darkMode 
+                  ? 'bg-zinc-950 border-zinc-800 hover:border-zinc-700' 
+                  : 'bg-zinc-50 border-zinc-200 hover:border-zinc-300'
             }`}
           >
             <div className="flex items-start justify-between mb-4">
@@ -413,6 +499,11 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
                   ></div>
                   <span className={`text-xs capitalize ${darkMode ? 'text-zinc-500' : 'text-zinc-600'}`}>{profile.status}</span>
                 </div>
+              </div>
+              <div className={`p-1 cursor-grab active:cursor-grabbing opacity-40 hover:opacity-70 transition-opacity ${
+                darkMode ? 'text-zinc-500' : 'text-zinc-400'
+              }`}>
+                <GripVertical size={18} />
               </div>
             </div>
             <div className="space-y-2 mb-4 text-sm">

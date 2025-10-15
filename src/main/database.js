@@ -120,6 +120,7 @@ function getProfile(id) {
 function createProfile(profileData) {
   const profiles = readData(profilesDbPath);
   const timestamp = Date.now();
+  const maxOrder = profiles.length > 0 ? Math.max(...profiles.map(p => p.order || 0)) : 0;
   const newProfile = {
     id: timestamp,
     name: profileData.name,
@@ -128,6 +129,7 @@ function createProfile(profileData) {
     createdAt: new Date().toISOString(),
     lastUsed: null,
     viewportSeed: timestamp, // Unique seed for viewport generation
+    order: maxOrder + 1, // Auto-increment order for new profiles
     ...profileData
   };
   profiles.push(newProfile);
@@ -564,6 +566,36 @@ function addActivity(activityData) {
   }
 }
 
+function reorderProfiles(newOrderArray) {
+  try {
+    const profiles = readData(profilesDbPath);
+    
+    // Update order field based on new array positions
+    newOrderArray.forEach((profileId, index) => {
+      const profile = profiles.find(p => p.id === profileId);
+      if (profile) {
+        profile.order = index + 1;
+      }
+    });
+    
+    const result = writeData(profilesDbPath, profiles);
+    
+    // Log activity
+    if (result.success) {
+      addActivity({
+        type: 'profiles_reordered',
+        profileName: 'Multiple',
+        details: 'Profiles reordered by user'
+      });
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('Error reordering profiles:', error);
+    return { success: false, message: error.message };
+  }
+}
+
 module.exports = {
   initDatabase,
   // Profiles
@@ -574,6 +606,7 @@ module.exports = {
   deleteProfile,
   clearProfileCookies,
   duplicateProfile,
+  reorderProfiles,
   // Proxies
   getAllProxies,
   getProxy,

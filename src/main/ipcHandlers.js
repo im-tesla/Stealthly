@@ -6,6 +6,7 @@ const {
   deleteProfile,
   clearProfileCookies,
   duplicateProfile,
+  reorderProfiles,
   getAllProxies,
   getProxy,
   createProxy,
@@ -71,6 +72,15 @@ function registerIpcHandlers(ipcMain) {
       return clearProfileCookies(id);
     } catch (error) {
       console.error('Error clearing cookies:', error);
+      return { success: false, message: error.message };
+    }
+  });
+
+  ipcMain.handle('profiles:reorder', async (event, newOrderArray) => {
+    try {
+      return reorderProfiles(newOrderArray);
+    } catch (error) {
+      console.error('Error reordering profiles:', error);
       return { success: false, message: error.message };
     }
   });
