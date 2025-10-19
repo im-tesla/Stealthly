@@ -4,6 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const { app } = require('electron');
 const { generateWebRTCProtectionExtension, cleanupWebRTCProtectionExtension } = require('./webrtcProtection');
+const { setupPasswordAutoFill } = require('./passwordInjection');
 
 class BrowserManager {
   constructor() {
@@ -226,13 +227,27 @@ class BrowserManager {
       const pages = context.pages();
       const page = pages.length > 0 ? pages[0] : await context.newPage();
 
-      // Navigate to startup URL if specified
+      // Navigate to startup URL if specified (BEFORE setting up auto-fill)
       if (profile.startupUrl && profile.startupUrl !== 'about:blank') {
         try {
           await page.goto(profile.startupUrl);
         } catch (navError) {
           console.warn(`Could not navigate to startup URL: ${navError.message}`);
         }
+      }
+
+      // Setup password auto-fill if profile has saved passwords (AFTER navigation)
+      if (profile.passwords && profile.passwords.length > 0) {
+        console.log(`Setting up password auto-fill for ${profile.passwords.length} saved credential(s)`);
+        
+        // Setup for the current page
+        setupPasswordAutoFill(page, profile.passwords);
+        
+        // Also setup auto-fill for new pages/tabs
+        context.on('page', async (newPage) => {
+          console.log('New page opened, setting up password auto-fill');
+          setupPasswordAutoFill(newPage, profile.passwords);
+        });
       }
 
       // Setup cleanup handlers
