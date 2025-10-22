@@ -255,6 +255,9 @@ const Profiles = ({ profiles, setProfiles, proxies, extensions, darkMode }) => {
       let stoppedDueToNoProxy = false;
 
       for (const item of data) {
+        if (profiles.some(p => p.name.trim().toLowerCase() === item.name.trim().toLowerCase())) {
+          continue;
+        }
         // Check if we should stop due to no free proxy
         if (assignProxies && stopIfNoFreeProxy) {
           const hasUnusedProxy = proxies.some(proxy => proxyUsage[proxy.id] === 0);
