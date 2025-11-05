@@ -28,8 +28,10 @@ class BrowserManager {
     const isDev = !app.isPackaged;
     
     if (isDev) {
+      console.log('Running in development mode, using local browser path', process.cwd());
       return path.join(process.cwd(), 'browsers', 'chrome-win', 'chrome.exe');
     } else {
+      console.log('Running in production mode, using packaged browser path', process.resourcesPath);
       return path.join(process.resourcesPath, 'browsers', 'chrome-win', 'chrome.exe');
     }
   }
@@ -192,8 +194,6 @@ class BrowserManager {
       // Prepare launch options
       const launchOptions = {
         headless: false,
-        // Don't specify executablePath - let Patchright use its patched chromium
-        // executablePath: this._getChromePath(),
         viewport: launchConfig.viewport,
         args: launchConfig.args.concat(
           extensionsToLoad.length > 0 ? [`--load-extension=${extensionsToLoad.join(',')}`] : []
@@ -202,6 +202,19 @@ class BrowserManager {
         // Critical: Use Patchright's stealth mode
         bypassCSP: true
       };
+
+      if (!app.isPackaged) {
+        console.log('Using Patchright bundled Chromium (development)');
+      } else {
+        const chromePath = this._getChromePath();
+        console.log('Using bundled Chrome:', chromePath);
+        if (fs.existsSync(chromePath)) {
+          launchOptions.executablePath = chromePath;
+        } else {
+          console.error('Bundled Chrome not found at:', chromePath);
+          throw new Error(`Chrome executable not found at: ${chromePath}`);
+        }
+      }
 
       // Add proxy if configured
       if (proxyConfig) {
