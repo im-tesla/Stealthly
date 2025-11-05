@@ -25,21 +25,13 @@ class BrowserManager {
    * In production: resources/browsers/chrome-win/chrome.exe
    */
   _getChromePath() {
-    // Don't use bundled Chrome - let Patchright use its own patched chromium
-    // This is critical for webdriver removal to work
-    return undefined; // Patchright will use its own chromium binary
-    
-    /* Old code - using bundled Chrome which doesn't have Patchright patches
     const isDev = !app.isPackaged;
     
     if (isDev) {
-      // Development: Use browsers folder in project root
       return path.join(process.cwd(), 'browsers', 'chrome-win', 'chrome.exe');
     } else {
-      // Production: Use bundled browsers in resources
       return path.join(process.resourcesPath, 'browsers', 'chrome-win', 'chrome.exe');
     }
-    */
   }
 
   /**
