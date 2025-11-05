@@ -13,7 +13,6 @@ if (!app.isPackaged) {
 }
 
 function createWindow() {
-  // Determine icon path based on environment
   const iconPath = app.isPackaged
     ? path.join(process.resourcesPath, 'icons', 'icon.ico')
     : path.join(__dirname, '..', '..', 'icons', 'icon.ico');

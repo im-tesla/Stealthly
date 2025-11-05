@@ -1,43 +1,18 @@
-/**
- * Password Injection Module
- * Automatically fills login forms with saved credentials in a human-like manner
- * to avoid bot detection
- */
-
-/**
- * Wait for a random duration to simulate human behavior
- */
 function randomDelay(min = 50, max = 150) {
   return new Promise(resolve => setTimeout(resolve, Math.random() * (max - min) + min));
 }
 
-/**
- * Fill input field using Chrome's native autofill mechanism
- * This simulates Chrome's autofill feature rather than human typing
- */
 async function autofillInput(page, selector, value) {
   try {
     await page.evaluate(({ selector, value }) => {
       const element = document.querySelector(selector);
       if (!element) return false;
-
-      // Focus the element first (like Chrome does)
       element.focus();
-
-      // Set the value directly (like autofill does)
       element.value = value;
-
-      // Dispatch input event (Chrome autofill triggers this)
       element.dispatchEvent(new Event('input', { bubbles: true }));
-      
-      // Dispatch change event
       element.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // Some sites listen for keyup/keydown, so trigger those too
       element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true }));
       element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true }));
-
-      // Mark as autofilled (Chrome adds this attribute)
       element.setAttribute('data-autofilled', 'true');
 
       return true;
@@ -50,16 +25,10 @@ async function autofillInput(page, selector, value) {
   }
 }
 
-/**
- * Find and fill login forms on the page
- * Uses Chrome's autofill mechanism to fill fields instantly
- */
 async function fillLoginForm(page, username, password) {
   try {
-    // Wait a bit for the page to fully load
     await randomDelay(100, 300);
     
-    // Strategy 1: Common input selectors for username/email
     const usernameSelectors = [
       'input[type="email"]',
       'input[type="text"][name*="user" i]',
@@ -76,7 +45,6 @@ async function fillLoginForm(page, username, password) {
       'input[id="email"]',
     ];
 
-    // Strategy 2: Password field selectors
     const passwordSelectors = [
       'input[type="password"]',
       'input[autocomplete="current-password"]',
@@ -84,7 +52,6 @@ async function fillLoginForm(page, username, password) {
       'input[id*="pass" i]'
     ];
 
-    // Try to find and fill username field
     let usernameFilled = false;
     for (const selector of usernameSelectors) {
       try {
@@ -101,7 +68,6 @@ async function fillLoginForm(page, username, password) {
           }
         }
       } catch (error) {
-        // Continue to next selector
         continue;
       }
     }
@@ -111,10 +77,6 @@ async function fillLoginForm(page, username, password) {
       return false;
     }
 
-    // Small delay between filling fields (like Chrome autofill)
-    await randomDelay(50, 150);
-
-    // Try to find and fill password field
     let passwordFilled = false;
     for (const selector of passwordSelectors) {
       try {
@@ -131,7 +93,6 @@ async function fillLoginForm(page, username, password) {
           }
         }
       } catch (error) {
-        // Continue to next selector
         continue;
       }
     }
@@ -150,9 +111,6 @@ async function fillLoginForm(page, username, password) {
   }
 }
 
-/**
- * Extract domain from URL for matching
- */
 function extractDomain(url) {
   try {
     const urlObj = new URL(url);
@@ -162,12 +120,8 @@ function extractDomain(url) {
   }
 }
 
-/**
- * Check if current page matches a saved password URL
- */
 function matchesPasswordUrl(currentUrl, savedUrl) {
   try {
-    // Ignore about:blank and other non-http(s) URLs
     if (!currentUrl || !currentUrl.startsWith('http')) {
       return false;
     }
@@ -175,22 +129,16 @@ function matchesPasswordUrl(currentUrl, savedUrl) {
     const currentDomain = extractDomain(currentUrl);
     const savedDomain = extractDomain(savedUrl);
     
-    // Ignore if domains are empty
     if (!currentDomain || !savedDomain) {
       return false;
     }
     
-    // Check if domains match
     return currentDomain.includes(savedDomain) || savedDomain.includes(currentDomain);
   } catch (error) {
     return false;
   }
 }
 
-/**
- * Setup password auto-fill for a page
- * Listens for navigation and automatically fills forms when matching URLs
- */
 async function setupPasswordAutoFill(page, passwords) {
   if (!passwords || passwords.length === 0) {
     return;
@@ -198,20 +146,16 @@ async function setupPasswordAutoFill(page, passwords) {
 
   console.log(`Setting up password auto-fill for ${passwords.length} saved credential(s)`);
 
-  // Track which URLs have been filled to prevent duplicates
   const filledUrls = new Set();
   let isCurrentlyFilling = false;
   let lastFilledTime = 0;
-  const FILL_COOLDOWN = 3000; // 3 seconds cooldown between fills
+  const FILL_COOLDOWN = 1500;
 
-  // Function to check and fill on the current page
   const checkAndFill = async () => {
-    // Prevent concurrent executions
     if (isCurrentlyFilling) {
       return;
     }
 
-    // Check cooldown
     const now = Date.now();
     if (now - lastFilledTime < FILL_COOLDOWN) {
       return;
@@ -221,31 +165,25 @@ async function setupPasswordAutoFill(page, passwords) {
       isCurrentlyFilling = true;
       const currentUrl = page.url();
       
-      // Skip if already filled this exact URL
       if (filledUrls.has(currentUrl)) {
         return;
       }
       
-      // Find matching password for current URL
       const matchingPassword = passwords.find(pwd => matchesPasswordUrl(currentUrl, pwd.url));
       
       if (matchingPassword) {
         console.log(`Found matching credentials for: ${currentUrl}`);
         
-        // Wait for network to be idle before filling
         try {
           await page.waitForLoadState('networkidle', { timeout: 10000 });
         } catch (timeoutError) {
           console.log('Network idle timeout, proceeding anyway');
         }
         
-        // Small additional delay for safety
-        await randomDelay(300, 500);
+        await randomDelay(100, 300);
         
-        // Try to fill the form
         const success = await fillLoginForm(page, matchingPassword.username, matchingPassword.password);
         
-        // Mark as filled
         if (success) {
           filledUrls.add(currentUrl);
           lastFilledTime = Date.now();
@@ -258,12 +196,10 @@ async function setupPasswordAutoFill(page, passwords) {
     }
   };
 
-  // Set up listener for page load (only main frame)
   page.on('load', async () => {
     await checkAndFill();
   });
 
-  // Initial check after a delay
   setTimeout(async () => {
     await checkAndFill();
   }, 1000);

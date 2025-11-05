@@ -2,19 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-/**
- * Generate a Chrome extension to prevent WebRTC IP leaks
- * This extension blocks WebRTC from exposing real IP addresses
- */
 function generateWebRTCProtectionExtension(profileId) {
   const extensionDir = path.join(os.homedir(), '.stealthy', 'extensions', `webrtc_protection_${profileId}`);
   
-  // Create extension directory
   if (!fs.existsSync(extensionDir)) {
     fs.mkdirSync(extensionDir, { recursive: true });
   }
 
-  // Create manifest.json
   const manifest = {
     manifest_version: 3,
     name: 'Stealthy WebRTC Protection',
@@ -39,7 +33,6 @@ function generateWebRTCProtectionExtension(profileId) {
     JSON.stringify(manifest, null, 2)
   );
 
-  // Create background.js to set privacy settings
   const backgroundJs = `
 chrome.privacy.network.webRTCIPHandlingPolicy.set({
   value: 'disable_non_proxied_udp'
@@ -53,7 +46,6 @@ console.log('WebRTC Leak Protection: Enabled');
     backgroundJs
   );
 
-  // Create content.js to override WebRTC APIs
   const contentJs = `
 (function() {
   'use strict';
@@ -103,9 +95,6 @@ console.log('WebRTC Leak Protection: Enabled');
   return extensionDir;
 }
 
-/**
- * Clean up WebRTC protection extension for a profile
- */
 function cleanupWebRTCProtectionExtension(profileId) {
   try {
     const extensionDir = path.join(os.homedir(), '.stealthy', 'extensions', `webrtc_protection_${profileId}`);

@@ -129,6 +129,7 @@ function createProfile(profileData) {
     createdAt: new Date().toISOString(),
     lastUsed: null,
     viewportSeed: timestamp, // Unique seed for viewport generation
+    fingerprintSeed: profileData.fingerprintSeed || crypto.randomBytes(16).toString('hex'),
     order: maxOrder + 1, // Auto-increment order for new profiles
     ...profileData
   };
@@ -238,8 +239,9 @@ function clearProfileCookies(id) {
     const profileIndex = profiles.findIndex(p => p.id === id);
     if (profileIndex !== -1) {
       profiles[profileIndex].viewportSeed = Date.now();
+      profiles[profileIndex].fingerprintSeed = crypto.randomBytes(16).toString('hex');
       writeData(profilesDbPath, profiles);
-      console.log(`✓ Regenerated viewport seed for profile ${id}`);
+      console.log(`✓ Regenerated viewport and fingerprint seeds for profile ${id}`);
     }
     
     console.log(`✓ Cleared all data for profile ${id}`);
@@ -270,9 +272,10 @@ function duplicateProfile(id, newProfileData) {
     createdAt: new Date().toISOString(),
     lastUsed: null,
     viewportSeed: timestamp, // New unique viewport seed for duplicated profile
+    fingerprintSeed: crypto.randomBytes(16).toString('hex'),
     // Copy any other custom properties from the source profile (except id, createdAt, lastUsed, status, viewportSeed)
     ...(Object.keys(sourceProfile).reduce((acc, key) => {
-      if (!['id', 'name', 'proxyId', 'startupUrl', 'status', 'createdAt', 'lastUsed', 'viewportSeed'].includes(key)) {
+      if (!['id', 'name', 'proxyId', 'startupUrl', 'status', 'createdAt', 'lastUsed', 'viewportSeed', 'fingerprintSeed'].includes(key)) {
         acc[key] = sourceProfile[key];
       }
       return acc;

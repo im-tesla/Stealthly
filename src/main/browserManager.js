@@ -5,6 +5,8 @@ const os = require('os');
 const { app } = require('electron');
 const { generateWebRTCProtectionExtension, cleanupWebRTCProtectionExtension } = require('./webrtcProtection');
 const { setupPasswordAutoFill } = require('./passwordInjection');
+const db = require('./database');
+const { enableFingerprintProtection, createFingerprintSeed } = require('./fingerprintProtection');
 
 class BrowserManager {
   constructor() {
@@ -23,6 +25,11 @@ class BrowserManager {
    * In production: resources/browsers/chrome-win/chrome.exe
    */
   _getChromePath() {
+    // Don't use bundled Chrome - let Patchright use its own patched chromium
+    // This is critical for webdriver removal to work
+    return undefined; // Patchright will use its own chromium binary
+    
+    /* Old code - using bundled Chrome which doesn't have Patchright patches
     const isDev = !app.isPackaged;
     
     if (isDev) {
@@ -32,6 +39,7 @@ class BrowserManager {
       // Production: Use bundled browsers in resources
       return path.join(process.resourcesPath, 'browsers', 'chrome-win', 'chrome.exe');
     }
+    */
   }
 
   /**
@@ -80,41 +88,26 @@ class BrowserManager {
    * When profile data is cleared, the viewportSeed is regenerated, giving a new viewport
    */
   _generateViewport(viewportSeed) {
-    // Common screen resolutions with their ratios
     const screenSizes = [
-      // 16:9 aspect ratio (most common)
-      { width: 1920, height: 1080, name: 'Full HD' },
       { width: 1600, height: 900, name: 'HD+' },
       { width: 1366, height: 768, name: 'HD' },
       { width: 1280, height: 720, name: 'HD Ready' },
-      
-      // 16:10 aspect ratio
       { width: 1920, height: 1200, name: 'WUXGA' },
       { width: 1680, height: 1050, name: 'WSXGA+' },
       { width: 1440, height: 900, name: 'WXGA+' },
-      { width: 2560, height: 1600, name: 'WQXGA' },
-      
-      // 4:3 aspect ratio (older monitors)
       { width: 1024, height: 768, name: 'XGA' },
       { width: 1280, height: 1024, name: 'SXGA' },
-      
-      // Laptop sizes
       { width: 1536, height: 864, name: 'Laptop HD+' },
       { width: 1400, height: 1050, name: 'SXGA+' },
     ];
 
-    // Use viewportSeed for consistent random selection
-    const seed = viewportSeed || Date.now(); // Fallback for old profiles without viewportSeed
+    const seed = viewportSeed || Date.now();
     const sizeIndex = seed % screenSizes.length;
     const baseSize = screenSizes[sizeIndex];
-    
-    // Add small random variations (±0-20px) for uniqueness, but keep it deterministic per seed
-    const widthVariation = (seed * 7) % 21; // 0-20
-    const heightVariation = (seed * 11) % 21; // 0-20
 
     return {
-      width: baseSize.width + widthVariation,
-      height: baseSize.height + heightVariation,
+      width: baseSize.width,
+      height: baseSize.height,
       name: baseSize.name
     };
   }
@@ -141,12 +134,9 @@ class BrowserManager {
         '--disable-default-apps',
         '--disable-component-update',
         '--disable-domain-reliability',
-        '--disable-features=OptimizationHints,TranslateUI,InterestCohort',
+        '--disable-features=OptimizationHints,TranslateUI',
         '--password-store=basic',
         `--window-position=${Math.floor(Math.random() * 100)},${Math.floor(Math.random() * 100)}`,
-        '--dns-prefetch-disable',
-        '--no-referrers',
-        '--safebrowsing-disable-auto-update',
         '--disable-breakpad'
       ]
     };
@@ -171,6 +161,12 @@ class BrowserManager {
       const profileDir = this.getProfileDir(profile.id);
       if (!fs.existsSync(profileDir)) {
         fs.mkdirSync(profileDir, { recursive: true });
+      }
+
+      if (!profile.fingerprintSeed) {
+        const fingerprintSeed = createFingerprintSeed();
+        db.updateProfile(profile.id, { fingerprintSeed });
+        profile.fingerprintSeed = fingerprintSeed;
       }
 
       // Build launch configuration
@@ -204,15 +200,18 @@ class BrowserManager {
       // Prepare launch options
       const launchOptions = {
         headless: false,
-        executablePath: this._getChromePath(), // Use bundled Chrome
+        // Don't specify executablePath - let Patchright use its patched chromium
+        // executablePath: this._getChromePath(),
         viewport: launchConfig.viewport,
-        args: [
-          ...launchConfig.args,
-          ...(extensionsToLoad.length > 0 ? [`--load-extension=${extensionsToLoad.join(',')}`] : [])
-        ]
+        args: launchConfig.args.concat(
+          extensionsToLoad.length > 0 ? [`--load-extension=${extensionsToLoad.join(',')}`] : []
+        ),
+        ignoreDefaultArgs: ['--enable-automation'],
+        // Critical: Use Patchright's stealth mode
+        bypassCSP: true
       };
 
-      // Add proxy if configured (native support in Patchright!)
+      // Add proxy if configured
       if (proxyConfig) {
         launchOptions.proxy = proxyConfig;
       }
@@ -222,6 +221,17 @@ class BrowserManager {
       console.log(`Profile directory: ${profileDir}`);
       
       const context = await chromium.launchPersistentContext(profileDir, launchOptions);
+
+      try {
+        await enableFingerprintProtection(context, {
+          seed: profile.fingerprintSeed,
+          noiseAmplitude: 1.05,
+          includeWebGL: true
+        });
+        console.log('✓ Fingerprint protection enabled');
+      } catch (error) {
+        console.warn('Fingerprint protection could not be initialized:', error.message);
+      }
 
       // Get or create a page
       const pages = context.pages();
@@ -260,7 +270,6 @@ class BrowserManager {
         
         this.activeBrowsers.delete(profile.id);
         
-        const db = require('./database');
         db.updateProfile(profile.id, { status: 'inactive' });
       });
 

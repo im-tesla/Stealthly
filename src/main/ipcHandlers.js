@@ -45,7 +45,6 @@ function registerIpcHandlers(ipcMain) {
   });
 
   ipcMain.handle('profiles:delete', async (event, id) => {
-    // Check if profile is currently active and close it first
     if (browserManager.isProfileActive(id)) {
       console.log(`Closing active browser for profile ${id} before deletion...`);
       await browserManager.closeProfile(id);
@@ -60,11 +59,8 @@ function registerIpcHandlers(ipcMain) {
 
   ipcMain.handle('profiles:clearCookies', async (event, id) => {
     try {
-      // Check if browser is active for this profile
       if (browserManager.isProfileActive(id)) {
-        // Close the browser first
         await browserManager.closeProfile(id);
-        // Wait a bit for the browser to fully close
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
@@ -122,7 +118,6 @@ function registerIpcHandlers(ipcMain) {
     try {
       const result = await browserManager.closeProfile(profileId);
       
-      // Update profile status
       if (result.success) {
         updateProfile(profileId, { status: 'inactive' });
       }
@@ -163,7 +158,7 @@ function registerIpcHandlers(ipcMain) {
     const net = require('net');
     
     return new Promise((resolve) => {
-      const timeout = 5000; // 5 second timeout
+      const timeout = 5000;
       const socket = new net.Socket();
       
       const timer = setTimeout(() => {
@@ -213,7 +208,6 @@ function registerIpcHandlers(ipcMain) {
       const manifestContent = fs.readFileSync(manifestPath, 'utf8');
       const manifest = JSON.parse(manifestContent);
       
-      // Find the best icon (prefer largest size)
       let iconPath = null;
       if (manifest.icons) {
         const iconSizes = Object.keys(manifest.icons).map(Number).sort((a, b) => b - a);
@@ -222,7 +216,6 @@ function registerIpcHandlers(ipcMain) {
           const iconFile = manifest.icons[largestIconSize];
           const fullIconPath = path.join(extensionPath, iconFile);
           
-          // Convert icon to base64 data URL
           if (fs.existsSync(fullIconPath)) {
             const iconBuffer = fs.readFileSync(fullIconPath);
             const iconExt = path.extname(iconFile).toLowerCase();
@@ -232,7 +225,6 @@ function registerIpcHandlers(ipcMain) {
         }
       }
       
-      // Extract relevant info
       return {
         success: true,
         name: manifest.name || 'Unknown Extension',
